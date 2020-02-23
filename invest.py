@@ -28,18 +28,20 @@ app.layout = app_layout
 	],
 	[
 		Input('tickers', 'options'),
-		Input('table1', 'sort_by'),
-		Input('table1', 'selected_rows'),
-		Input('time-range', 'value'),
 		Input('analysis-menu', 'value'),
+		Input('table1', 'selected_rows'),
+	],
+	[
+		State('time-range', 'value'),
+		State('table1', 'sort_by'),
 	]
 )
-def update_table1(ticker_options, sort_by, selected_rows, week_range, analysis):
+def update_table1(ticker_options, analysis, selected_rows, week_range, sort_by):
 	if len(ticker_options)==0:
 		return [],[],'single'
 	tickers = [t['value'] for t in ticker_options]
 	if analysis=='Forecast':
-		return forecast_table(tickers, sort_by, selected_rows, week_range)
+		return forecast_table(tickers, sort_by, week_range)
 
 #------------------------------------------------------------------------------
 # Callback for table2
@@ -51,15 +53,18 @@ def update_table1(ticker_options, sort_by, selected_rows, week_range, analysis):
 	],
 	[
 		Input('table1', 'data'),
-		Input('table1', 'selected_rows'),
 		Input('table2', 'sort_by'),
-		Input('time-range', 'value'),
-		Input('analysis-menu', 'value'),
+	],
+	[
+		State('table1', 'selected_rows'),
+		State('time-range', 'value'),
+		State('analysis-menu', 'value'),
 	]
 )
-def update_table2(table1_data, table1_selected_rows, table2_sort_by, week_range, analysis):
+def update_table2(table1_data, table2_sort_by, table1_selected_rows, week_range, analysis):
 	if not week_range or not table1_selected_rows or not table1_data:
 		return [], []
+	# print('update_table2', table2_sort_by, table1_selected_rows, len(table1_data))
 	tickers = [table1_data[i]['Stock'] for i in table1_selected_rows]
 	if analysis=='Forecast':
 		return analyst_table(tickers[0], table2_sort_by, week_range)
@@ -71,9 +76,11 @@ def update_table2(table1_data, table1_selected_rows, table2_sort_by, week_range,
 	Output('figure1', 'figure'),
 	[
 		Input('table1', 'data'),
-		Input('table1', 'selected_rows'),
-		Input('time-range', 'value'),
-		Input('analysis-menu', 'value'),
+	],
+	[
+		State('table1', 'selected_rows'),
+		State('time-range', 'value'),
+		State('analysis-menu', 'value'),
 	]
 )
 def plot_figure1(table_data, selected_rows, week_range, analysis):
@@ -90,9 +97,11 @@ def plot_figure1(table_data, selected_rows, week_range, analysis):
 	Output('figure2', 'figure'),
 	[
 		Input('table1', 'data'),
-		Input('table1', 'selected_rows'),
-		Input('time-range', 'value'),
-		Input('analysis-menu', 'value'),
+	],
+	[
+		State('table1', 'selected_rows'),
+		State('time-range', 'value'),
+		State('analysis-menu', 'value'),
 	]
 )
 def plot_figure2(table1_data, table1_selected_rows, week_range, analysis):
@@ -122,21 +131,21 @@ def set_time_range(months_ago):
 @app.callback(
 	Output('table1', 'selected_rows'),
 	[
-		Input('time-range', 'value'),
 		Input('table1', 'sort_by'),
+		Input('time-range', 'value'),
 	],
 	[
-		State('tickers', 'options'),
 		State('table1', 'data'),
 		State('table1', 'selected_rows'),
+		State('tickers', 'options'),
 	]
 )
-def reset_table1_selected_rows(week_range, sort_by, ticker_options, data, selected_rows):
-	if data in [None, []]:
+def reset_table1_selected_rows(sort_by, week_range, old_data, old_selected_rows,  ticker_options):
+	if not old_data:
 		return []
-	selected_tickers = [ data[i]['Stock'] for i in selected_rows ]
+	selected_tickers = [ old_data[i]['Stock'] for i in old_selected_rows ]
 	tickers = [t['value'] for t in ticker_options]
-	new_data, c, r = forecast_table(tickers, sort_by, selected_rows, week_range)
+	new_data, c, r = forecast_table(tickers, sort_by, week_range)
 	rows = [ i for i in range(len(new_data)) if new_data[i]['Stock'] in selected_tickers ]
 	return rows
 
@@ -210,7 +219,7 @@ def action_menu_callback(action, table1_data, table1_selected_rows, text_input, 
 	[
 		Output('portfolios-menu', 'options'),
 		Output('tickers', 'options'),
-		Output('time-menu', 'value'),
+		Output('time-menu', 'value'),	
 	],
 	[
 		Input('portfolios-menu', 'value'),

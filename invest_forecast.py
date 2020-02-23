@@ -5,23 +5,7 @@ import dash_html_components as html
 import datetime
 from invest_utils import *
 
-'''
-@app.callback(
-	[
-		Output('table1', 'data'),
-		Output('table1', 'columns'),
-		Output('table1', 'row_selectable'),
-	],
-	[
-		Input('tickers', 'values'),
-		Input('table1', 'sort_by'),
-		Input('table1', 'selected_rows'),
-		Input('time-range', 'value'),
-		Input('analysis-menu', 'value'),
-	]
-)
-'''
-def forecast_table(tickers, sort_by, selected_rows, week_range):
+def forecast_table(tickers, sort_by, week_range):
 	columns = [
 		{
 			'name':'Stock',
@@ -122,18 +106,6 @@ def forecast_table(tickers, sort_by, selected_rows, week_range):
 	return data, columns, 'single'
 
 
-#------------------------------------------------------------------------------
-'''
-@app.callback(
-	Output('figure1', 'figure'),
-	[
-		Input('table1', 'data'),
-		Input('table1', 'selected_rows'),
-		Input('time-range', 'value'),
-		Input('analysis-menu', 'value'),
-	]
-)
-'''
 #------------------------------------------------------------------------------
 def forecast_figure(ticker, week_range):
 	start = datetime.datetime.today() - datetime.timedelta(days=-week_range[0]*7)

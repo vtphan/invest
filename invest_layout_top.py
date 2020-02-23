@@ -56,6 +56,7 @@ time_menu =	html.Div(
 			{'label':'4 Years','value':4*12},
 			{'label':'5 Years','value':5*12},
 		],
+		value=1,
 		clearable = False,
 	), 
 	className = 'two columns',
