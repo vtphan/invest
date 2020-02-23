@@ -58,7 +58,7 @@ def update_table1(ticker_options, sort_by, selected_rows, week_range, analysis):
 	]
 )
 def update_table2(table1_data, table1_selected_rows, table2_sort_by, week_range, analysis):
-	if week_range is None or table1_selected_rows is None or len(table1_selected_rows)==0:
+	if not week_range or not table1_selected_rows or not table1_data:
 		return [], []
 	tickers = [table1_data[i]['Stock'] for i in table1_selected_rows]
 	if analysis=='Forecast':
@@ -77,7 +77,7 @@ def update_table2(table1_data, table1_selected_rows, table2_sort_by, week_range,
 	]
 )
 def plot_figure1(table_data, selected_rows, week_range, analysis):
-	if week_range is None or selected_rows is None or len(selected_rows)==0:
+	if not week_range or not selected_rows or not table_data:
 		return dict(data=[],layout={})
 	tickers = [table_data[i]['Stock'] for i in selected_rows]
 	if analysis == 'Forecast':
@@ -96,7 +96,7 @@ def plot_figure1(table_data, selected_rows, week_range, analysis):
 	]
 )
 def plot_figure2(table1_data, table1_selected_rows, week_range, analysis):
-	if week_range is None or table1_selected_rows is None or len(table1_selected_rows)==0:
+	if not week_range or not table1_selected_rows or not table1_data:
 		return dict(data=[],layout={})
 	tickers = [table1_data[i]['Stock'] for i in table1_selected_rows]
 	if analysis == 'Forecast':
