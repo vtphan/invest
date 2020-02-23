@@ -174,7 +174,8 @@ def analyst_figure(ticker, week_range):
 	if len(returns)==0:
 		layout = dict()
 	else:
-		layout=dict(title = 'Average return at time of forecast: {}%'.format(
+		layout=dict(title = '{} - Average return at time of forecast: {}%'.format(
+			ticker,
 			round(100*np.mean(returns),1)))
 	return dict(data=plot_data, layout=layout)
 #------------------------------------------------------------------------------

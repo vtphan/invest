@@ -11,7 +11,6 @@ from invest_analysts import analyst_table, analyst_figure
 
 #------------------------------------------------------------------------------
 
-DEBUG = True
 
 #------------------------------------------------------------------------------
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']

@@ -84,27 +84,37 @@ def forecast_table(tickers, sort_by, selected_rows, week_range):
 				med_ret = target_price.median()/latest_price-1
 				max_ret = target_price.max()/latest_price-1
 
-			return_at_forecast = []
+			# return_at_forecast = []
+			gaps = []
 			for i in range(len(target_price)):
 				date = target_price.index[i]
 				idx = min(np.searchsorted(stock_df.index, date), len(stock_df)-1)
 				price_at_forecast = stock_df.iloc[idx]['Adj Close']
-				return_at_forecast.append(target_price.iloc[i]/price_at_forecast-1)
-			if len(return_at_forecast)==0:
-				gap = 0
-			else:
-				gap = np.mean(return_at_forecast)-med_ret
+				# return_at_forecast.append(target_price.iloc[i]/price_at_forecast-1)
+
+				t_at_forecast = stock_df.index[idx]
+				t_latest = stock_df.index[-1]
+				p_star = price_at_forecast + (target_price.iloc[i]-price_at_forecast)*(t_latest-t_at_forecast).days/365
+				gap = (latest_price - p_star)/latest_price
+				gaps.append(gap)
+				# print(t)
+				# print('\tp_star',p_star)
+				# print('\tlaterst_price', latest_price)
+				# print('\tprice_at_forecast', price_at_forecast)
+				# print('\ttarget_price', target_price.iloc[i])
+				# print('\tdelta_t', (t_latest-t_at_forecast).days, t_latest, t_at_forecast)
+
 			data.append({
 				'Stock' : t,
 				'Score' : rating_df[rating_df.Rating >= 0].Rating.mean(),
 				'Count' : len(rating_df[rating_df.Price>0]),
-				'Gap' : gap, 
+				'Gap' : 0 if gaps==[] else np.mean(gaps), 
 				'Med Ret' : med_ret,
 				'Min Ret' : min_ret,
 				'Max Ret' : max_ret,
 			})
 		else:
-			print('No data for', t, 'within range.')
+			Debug('No data for', t, 'within range.')
 
 	data.sort(key=lambda c: c['Score'], reverse=True)
 	if len(sort_by) > 0:
@@ -217,9 +227,10 @@ def forecast_figure(ticker, week_range):
 		text = text,
 		showlegend=False,
 	))
-	layout=dict(title = 'Median return at time of close (${}) on {}: {}%'.format(
+	layout=dict(title = '{} - Median return at closing (${}) on {}: {}%'.format(
+		ticker,
 		round(prices[-1],2), 
-		prices.index[-1].strftime('%b.%d'),
+		prices.index[-1].strftime('%m.%d'),
 		round(100*(np.median(tmp)/prices[-1]-1),1)))
 	return dict(data=plot_data, layout=layout)
 

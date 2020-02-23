@@ -9,6 +9,10 @@ import pandas_datareader as pdr
 
 #------------------------------------------------------------------------------
 
+DEBUG = True
+
+#------------------------------------------------------------------------------
+
 PORTFOLIOS_DIR = './Portfolios'
 STOCKS_DIR = './Stocks'
 RATINGS_DIR = './Ratings'
@@ -23,6 +27,12 @@ RATINGS = {}
 ANALYSTS = None
 
 BadAnalysts = ['cfra']
+
+#------------------------------------------------------------------------------
+
+def Debug(*s):
+	if DEBUG:
+		print(*s)
 
 #------------------------------------------------------------------------------
 def setup(update=False):
@@ -74,7 +84,7 @@ def get_stock_prices(stock, days=365*5, update=False):
 			df = pdr.get_data_yahoo(stock, start=start, end=today)
 			df.to_csv(saved_file)
 		df = pandas.read_csv(saved_file, index_col='Date', parse_dates=['Date'])
-		print('Reading stock prices from', saved_file)
+		Debug('Reading stock prices from', saved_file)
 		return df
 	except:
 		return None
@@ -84,7 +94,7 @@ def get_stock_ratings(stock, update=False):
 	rating_file = os.path.join(RATINGS_DIR, stock + '.csv')
 	if update or not os.path.exists(rating_file):
 		download_stock_ratings(stock)
-	print('Reading stock ratings from', rating_file)
+	Debug('Reading stock ratings from', rating_file)
 	df = pandas.read_csv(rating_file, index_col='Date', parse_dates=['Date'])
 	return df
 
