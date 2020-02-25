@@ -4,7 +4,7 @@ from invest_utils import portfolio_list
 
 #----------------------------------------------------------------------
 text_input = html.Div(
-	dcc.Input(id='text-input', type='text', value='', placeholder='Symbol or portfolio'),
+	dcc.Input(id='text-input', type='text', value='', placeholder='INPUT'),
 	className = 'two columns',
 )
 
@@ -20,7 +20,7 @@ portfolios_menu = html.Div(
 				options = [],
 				value = '', 
 				clearable = False,
-				placeholder='Select a portfolio',
+				placeholder='PORTFOLIO',
 			)]),
 	className = 'two columns',
 )
@@ -31,14 +31,15 @@ action_menu = html.Div(
 			id = 'action-menu', 
 			options=[
 				{'label':'Add symbol', 'value':'Add symbol'},
-				{'label':'Remove symbol', 'value':'Remove symbol'},
+				{'label':'Save symbol(s)', 'value':'Save symbols'},
+				{'label':'Remove symbol(s)', 'value':'Remove symbols'},
 				{'label':'Add portfolio', 'value':'Add portfolio'},
 				{'label':'Remove portfolio', 'value':'Remove portfolio'},
 				{'label':'Update portfolio data', 'value':'Update portfolio'},
 			], 
 			value = '', 
 			clearable=False,
-			placeholder='Select an action'),
+			placeholder='ACTION'),
 	className = 'two columns',
 )
 
@@ -85,29 +86,3 @@ visualization_menu = html.Div(
 	className = 'two columns',
 )
 
-#----------------------------------------------------------------------
-# Message for menu items.
-#----------------------------------------------------------------------
-# top_controls_message = html.Div(
-# 	dcc.Loading(
-# 		id='loading1',
-# 		type='dot',
-# 		fullscreen=True,
-# 		children=[
-# 			html.Div(
-# 				id='portfolio-update-message', 
-# 				style={'padding':'10px 0 0 10px'},
-# 			),
-# 		],
-# 	),
-# 	className='row', 
-# 	style={
-# 		'width':'95%', 
-# 		'margin':'0 auto', 
-# 		'color':'#bf2b21', 
-# 		'border':'1px solid white',
-# 		'height':'1px',
-# 		# 'height':'55px',
-# 		# 'display':'none',
-# 	}
-# )

@@ -42,6 +42,12 @@ def analyst_table(ticker, sort_by, week_range):
 			'id':'Rating',
 		},
 		{
+			'name':'Price',
+			'id':'Price',
+			'type':'numeric',
+			'format': FormatTemplate.money(0),
+		},
+		{
 			'name':'Forecast',
 			'id':'Forecast',
 			'type':'numeric',
@@ -77,6 +83,7 @@ def analyst_table(ticker, sort_by, week_range):
 			'Forecaster':item.Analyst,
 			'Trust':score,
 			'Rating': rating_label[item.Rating],
+			'Price': close_price,
 			'Forecast':item.Price,
 			'Return':item.Price/close_price-1,
 		})

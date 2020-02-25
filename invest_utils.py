@@ -78,7 +78,9 @@ def load_analyst_data():
 def get_stock_prices(stock, days=365*5, update=False):
 	try:
 		saved_file = os.path.join(STOCKS_DIR, stock+'.csv')
-		if update or not os.path.exists(saved_file):
+		mtime = datetime.datetime.fromtimestamp(os.path.getmtime(saved_file))
+		now = datetime.datetime.now()
+		if not os.path.exists(saved_file) or (update and (now-mtime).seconds>7200):
 			today = datetime.datetime.today()
 			start = today - datetime.timedelta(days=days)
 			df = pdr.get_data_yahoo(stock, start=start, end=today)
@@ -92,7 +94,9 @@ def get_stock_prices(stock, days=365*5, update=False):
 #------------------------------------------------------------------------------
 def get_stock_ratings(stock, update=False):
 	rating_file = os.path.join(RATINGS_DIR, stock + '.csv')
-	if update or not os.path.exists(rating_file):
+	mtime = datetime.datetime.fromtimestamp(os.path.getmtime(rating_file))
+	now = datetime.datetime.now()
+	if not os.path.exists(rating_file) or (update and (now-mtime).seconds>7200):
 		download_stock_ratings(stock)
 	Debug('Reading stock ratings from', rating_file)
 	df = pandas.read_csv(rating_file, index_col='Date', parse_dates=['Date'])
@@ -116,7 +120,7 @@ def download_stock_ratings(ticker):
 			fp.write('Date,Analyst,Rating,Price\n')
 	ticker_df = pandas.read_csv(ticker_file, index_col=['Date','Analyst'], parse_dates=['Date'])
 
-	print('Retrieving data for', ticker, '... ', end='' )
+	print('Retrieving data for', ticker)
 	rating_url = url_root + 'price-target/'
 	page = requests.get(rating_url)
 	if page.status_code == 200:
@@ -167,7 +171,11 @@ def rating_to_color(rating):
 #------------------------------------------------------------------------------
 
 def portfolio_list():
-	return [dict(label=p, value=p) for p in os.listdir(PORTFOLIOS_DIR)]
+	saved_file = os.path.join(PORTFOLIOS_DIR, '__SAVED__')
+	if not os.path.exists(saved_file):
+		with open(saved_file,'w') as f:
+			f.write('')
+	return [dict(label=p, value=p) for p in sorted(os.listdir(PORTFOLIOS_DIR))]
 
 #------------------------------------------------------------------------------
 

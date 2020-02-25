@@ -18,6 +18,36 @@ app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 app.layout = app_layout
 
 #------------------------------------------------------------------------------
+def build_table1(ticker_options, sort_by, week_range, analysis):
+	tickers = [t['value'] for t in ticker_options]
+	data, columns, row_selectable = [], [], 'single'
+	if analysis=='Forecast':
+		data, columns, row_selectable = forecast_table(tickers, sort_by, week_range)
+	return data, columns, row_selectable
+
+#------------------------------------------------------------------------------
+@app.callback(
+	Output('table1', 'selected_rows'),
+	[
+		Input('table1', 'sort_by'),
+		Input('time-range', 'value'),
+	],
+	[
+		State('table1', 'data'),
+		State('table1', 'selected_rows'),
+		State('tickers', 'options'),
+		State('analysis-menu', 'value'),
+	]
+)
+def reset_table1_selected_rows(sort_by, week_range, old_data, old_selected_rows,  ticker_options, analysis):
+	if not old_data:
+		return []
+	selected_tickers = [ old_data[i]['Stock'] for i in old_selected_rows ]
+	new_data, c, r = build_table1(ticker_options, sort_by, week_range, analysis)
+	rows = [ i for i in range(len(new_data)) if new_data[i]['Stock'] in selected_tickers ]
+	return rows
+
+#------------------------------------------------------------------------------
 # Callback for table1
 #------------------------------------------------------------------------------
 @app.callback(
@@ -27,21 +57,19 @@ app.layout = app_layout
 		Output('table1', 'row_selectable'),
 	],
 	[
-		Input('tickers', 'options'),
 		Input('analysis-menu', 'value'),
 		Input('table1', 'selected_rows'),
 	],
 	[
+		State('tickers', 'options'),
 		State('time-range', 'value'),
 		State('table1', 'sort_by'),
 	]
 )
-def update_table1(ticker_options, analysis, selected_rows, week_range, sort_by):
+def update_table1(analysis, selected_rows, ticker_options, week_range, sort_by):
 	if len(ticker_options)==0:
 		return [],[],'single'
-	tickers = [t['value'] for t in ticker_options]
-	if analysis=='Forecast':
-		return forecast_table(tickers, sort_by, week_range)
+	return build_table1(ticker_options, sort_by, week_range, analysis)
 
 #------------------------------------------------------------------------------
 # Callback for table2
@@ -129,25 +157,32 @@ def set_time_range(months_ago):
 
 #------------------------------------------------------------------------------
 @app.callback(
-	Output('table1', 'selected_rows'),
+	Output('time-menu', 'value'),
+	[ Input('tickers', 'options') ]
+)
+def reset_time_menu(ticker_options):
+	return 1
+
+#------------------------------------------------------------------------------
+@app.callback(
 	[
-		Input('table1', 'sort_by'),
-		Input('time-range', 'value'),
+		Output('portfolios-menu', 'options'),
+		Output('tickers', 'options'),
 	],
 	[
-		State('table1', 'data'),
-		State('table1', 'selected_rows'),
-		State('tickers', 'options'),
+		Input('portfolios-menu', 'value'),
 	]
 )
-def reset_table1_selected_rows(sort_by, week_range, old_data, old_selected_rows,  ticker_options):
-	if not old_data:
-		return []
-	selected_tickers = [ old_data[i]['Stock'] for i in old_selected_rows ]
-	tickers = [t['value'] for t in ticker_options]
-	new_data, c, r = forecast_table(tickers, sort_by, week_range)
-	rows = [ i for i in range(len(new_data)) if new_data[i]['Stock'] in selected_tickers ]
-	return rows
+def load_portfolio(name):
+	# print('load_portfolio:', name)
+	if name=='':
+		return portfolio_list(), []
+	portfolio_name = name
+	tickers = []
+	input_file = os.path.join(PORTFOLIOS_DIR, portfolio_name)
+	with open(input_file) as fp:
+		tickers = [dict(label=line.strip(), value=line.strip()) for line in fp.readlines()]
+	return portfolio_list(), tickers
 
 #------------------------------------------------------------------------------
 @app.callback(
@@ -178,7 +213,19 @@ def action_menu_callback(action, table1_data, table1_selected_rows, text_input, 
 		print('{} is added to {}'.format(ticker_name, portfolio_name))
 		return portfolio_name
 
-	elif action == 'Remove symbol' and len(table1_selected_rows)>0:
+	elif action == 'Save symbols' and len(table1_selected_rows)>0:
+		with open(os.path.join(PORTFOLIOS_DIR, '__SAVED__')) as fp:
+			to_be_saved = [table1_data[i]['Stock'] for i in table1_selected_rows]
+			tickers = set([line.strip() for line in fp.readlines()])
+			for t in to_be_saved:
+				tickers.add(t)
+		with open(os.path.join(PORTFOLIOS_DIR, '__SAVED__'), 'w') as fp:
+			for t in sorted(tickers):
+				fp.write(t + '\n')
+		print('{} saved to __SAVED__'.format(to_be_saved))
+		return portfolio_name
+
+	elif action == 'Remove symbols' and len(table1_selected_rows)>0:
 		with open(os.path.join(PORTFOLIOS_DIR, portfolio_name)) as fp:
 			to_be_removed = [table1_data[i]['Stock'] for i in table1_selected_rows]
 			tickers = set([line.strip() for line in fp.readlines()])
@@ -213,28 +260,6 @@ def action_menu_callback(action, table1_data, table1_selected_rows, text_input, 
 		return portfolio_name
 
 	return ''
-
-#------------------------------------------------------------------------------
-@app.callback(
-	[
-		Output('portfolios-menu', 'options'),
-		Output('tickers', 'options'),
-		Output('time-menu', 'value'),	
-	],
-	[
-		Input('portfolios-menu', 'value'),
-	]
-)
-def load_portfolio(name):
-	# print('load_portfolio:', name)
-	if name=='':
-		return portfolio_list(), [], 1
-	portfolio_name = name
-	tickers = []
-	input_file = os.path.join(PORTFOLIOS_DIR, portfolio_name)
-	with open(input_file) as fp:
-		tickers = [dict(label=line.strip(), value=line.strip()) for line in fp.readlines()]
-	return portfolio_list(), tickers, 1
 
 #------------------------------------------------------------------------------
 
