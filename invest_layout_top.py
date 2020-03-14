@@ -64,26 +64,5 @@ time_menu =	html.Div(
 )
 
 #----------------------------------------------------------------------
-analysis_menu =html.Div(
-	dcc.Dropdown(id='analysis-menu', 
-		options = [
-			{'label':'Forecast','value':'Forecast'},
-			{'label':'Finance','value':'Finance'},
-			{'label':'Trade','value':'Trade'},
-		],
-		value = 'Trade',
-		clearable = False,
-	), 
-	className = 'two columns',
-)
 
-#----------------------------------------------------------------------
-visualization_menu = html.Div(
-	dcc.Dropdown(id='visualization-menu', 
-		options = [],
-		value = '',
-		clearable = False,
-	), 
-	className = 'two columns',
-)
 
