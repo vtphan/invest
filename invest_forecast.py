@@ -5,48 +5,48 @@ import dash_html_components as html
 import datetime
 from invest_utils import *
 
-def forecast_table(tickers, sort_by, week_range):
+def forecast_table(tickers, start_date):
 	columns = [
 		{
-			'name':'Stock',
+			'name': ['','Stock'],
 			'id':'Stock',
 			'type':'text',
 			# 'presentation':'markdown',
 		},
 		{
-			'name':'Score',
+			'name': ['Rating','Score'],
 			'id':'Score',
 			'type':'numeric',
 			'format': Format(precision=2,scheme=Scheme.fixed),
 		},
 		{
-			'name':'Count',
+			'name': ['Rating','Count'],
 			'id':'Count',
 			'type':'numeric',
 		},
 		{
-			'name':'Gap',
-			'id':'Gap',
+			'name': ['Growth Estimate', 'Qrt'],
+			'id':'Quarter',
 			'type':'numeric',
-			'format': FormatTemplate.percentage(1).sign(Sign.positive),
+			'format': FormatTemplate.percentage(2).sign(Sign.positive),
 		},
 		{
-			'id':'Med Ret',
-			'name':'median Ret',
+			'name': ['Growth Estimate', 'Next Qtr'],
+			'id':'NextQuarter',
 			'type':'numeric',
-			'format': FormatTemplate.percentage(1).sign(Sign.positive),
+			'format': FormatTemplate.percentage(2).sign(Sign.positive),
 		},
 		{
-			'id':'Min Ret',
-			'name':'min Ret',
+			'name': ['Growth Estimate', 'Year'],
+			'id':'Year',
 			'type':'numeric',
-			'format': FormatTemplate.percentage(1).sign(Sign.positive),
+			'format': FormatTemplate.percentage(2).sign(Sign.positive),
 		},
 		{
-			'id':'Max Ret',
-			'name':'max Ret',
+			'name': ['Growth Estimate', 'Next Year'],
+			'id':'NextYear',
 			'type':'numeric',
-			'format': FormatTemplate.percentage(1).sign(Sign.positive),
+			'format': FormatTemplate.percentage(2).sign(Sign.positive),
 		},
 	]
 	data = []
@@ -54,10 +54,11 @@ def forecast_table(tickers, sort_by, week_range):
 		if t not in STOCKS or t not in RATINGS:
 			print('{} is not found.'.format(t))
 			continue
-		start = datetime.datetime.today() - datetime.timedelta(days=-week_range[0]*7)
-		end = datetime.datetime.today() - datetime.timedelta(days=-week_range[1]*7)
+		start = determine_start_date(start_date)
+		end = datetime.datetime.today()
 		stock_df = STOCKS[t][start:end]
 		rating_df = RATINGS[t][start:end]
+		trends = FINANCIALS[t]['trends']
 		if len(stock_df) > 0 and len(rating_df):
 			latest_price = stock_df.iloc[-1]['Adj Close']
 			target_price = rating_df[rating_df.Price>0].Price
@@ -92,30 +93,30 @@ def forecast_table(tickers, sort_by, week_range):
 				'Stock' : t,
 				'Score' : rating_df[rating_df.Rating >= 0].Rating.mean(),
 				'Count' : len(rating_df[rating_df.Price>0]),
-				'Gap' : 0 if gaps==[] else np.mean(gaps), 
-				'Med Ret' : med_ret,
-				'Min Ret' : min_ret,
-				'Max Ret' : max_ret,
+				'Quarter' : trends['Growth_Quarter']/100,
+				'NextQuarter' : trends['Growth_NextQuarter']/100,
+				'Year' : trends['Growth_Year']/100,
+				'NextYear' : trends['Growth_NextYear']/100,
 			})
 		else:
 			Debug('No data for', t, 'within range.')
 
 	data.sort(key=lambda c: c['Score'], reverse=True)
-	if len(sort_by) > 0:
-		data = sorted(data, key=lambda c: c[sort_by[0]['column_id']], reverse=sort_by[0]['direction']=='asc')
+	# if len(sort_by) > 0:
+	# 	data = sorted(data, key=lambda c: c[sort_by[0]['column_id']], reverse=sort_by[0]['direction']=='asc')
 	return data, columns, 'single'
 
 
 #------------------------------------------------------------------------------
-def forecast_figure(ticker, week_range):
-	start = datetime.datetime.today() - datetime.timedelta(days=-week_range[0]*7)
-	end = datetime.datetime.today() - datetime.timedelta(days=-week_range[1]*7)
+def forecast_figure(ticker, start_date):
+	start = determine_start_date(start_date)
+	end = datetime.datetime.today()
 	ratings = RATINGS[ticker][start:end].sort_values(by=['Price','Date'], ascending=False)
 	if len(ratings) > 0:
 		min_rating_date = ratings.index.min()
 	else:
 		min_rating_date = end
-	prices = STOCKS[ticker]['Adj Close'][min_rating_date-datetime.timedelta(days=180):end]
+	prices = STOCKS[ticker]['Adj Close'][min_rating_date-datetime.timedelta(days=365):end]
 
 	#-----------------------------------------------------------------------
 	# Plot prices
@@ -164,17 +165,13 @@ def forecast_figure(ticker, week_range):
 	x, y, text = [], [], []
 	tmp = sorted(ratings[ratings.Price>0].Price)
 	if len(tmp)>0:
-		min_forecast, med_forecast, max_forecast = tmp[0], tmp[len(tmp)//2],tmp[-1]
-	# if len(ratings[ratings.Price>0]) > 0:
-	# 	min_forecast = np.min(ratings[ratings.Price>0].Price)
-	# 	med_forecast = np.median(ratings[ratings.Price>0].Price)
-	# 	max_forecast = np.max(ratings[ratings.Price>0].Price)
+		min_forecast, med_forecast, max_forecast = round(tmp[0],0), tmp[len(tmp)//2], tmp[-1]
 	for i in range(len(ratings)):
 		if ratings.iloc[i].Price > 0:
 			x.append(ratings.index[i] + datetime.timedelta(days=365))
 			p = ratings.iloc[i].Price
 			y.append(p)
-			label = '${}'.format(p)
+			label = '${}'.format(int(round(p,0)))
 			if not min_done and p==min_forecast:
 				text.append(label)
 				min_done = True
@@ -199,10 +196,12 @@ def forecast_figure(ticker, week_range):
 		text = text,
 		showlegend=False,
 	))
-	layout=dict(title = '{} - Median return at closing (${}) on {}: {}%'.format(
-		ticker,
-		round(prices[-1],2), 
-		prices.index[-1].strftime('%m.%d'),
-		round(100*(np.median(tmp)/prices[-1]-1),1)))
+	layout=dict(
+		title = 'Median 12-month forecast return: {}%'.format(
+			round(100*(np.median(tmp)/prices[-1]-1),1)),
+		margin={'l': 40, 'b': 20, 't': 50, 'r': 10},
+		xaxis = dict(range=[prices.index[0], end+datetime.timedelta(days=365+120)]),
+		height=350,
+	)
 	return dict(data=plot_data, layout=layout)
 

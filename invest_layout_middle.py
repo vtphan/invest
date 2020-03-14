@@ -6,9 +6,11 @@ import dash_table
 def setup_table(table_id):
 	return dash_table.DataTable(
 		id=table_id,
-		sort_action='custom',
+		sort_action='native',
+		# sort_action='custom',
 		sort_mode='single',
 		sort_by=[],
+	    merge_duplicate_headers=True,
 		style_header={
 			'backgroundColor': '#cfcfcf',
 			'fontWeight': 'bold',
@@ -20,7 +22,7 @@ def setup_table(table_id):
 			}
 		],
 		style_table={
-			'maxHeight':'200px',
+			'maxHeight':'280px',
 			'width':'90%',
 			'margin':'0 auto',
 			'overflowX':'scroll', 

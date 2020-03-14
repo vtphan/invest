@@ -6,10 +6,12 @@ import numpy as np
 from bs4 import BeautifulSoup
 import pandas
 import pandas_datareader as pdr
+from yahoo_fin.stock_info import get_analysts_info
 
 #------------------------------------------------------------------------------
 
 DEBUG = True
+INDEX_SYMBOL = ''
 
 #------------------------------------------------------------------------------
 
@@ -24,6 +26,7 @@ INFO_DIR = './Info'
 
 STOCKS = {}
 RATINGS = {}
+FINANCIALS = {}
 ANALYSTS = None
 
 BadAnalysts = ['cfra']
@@ -63,6 +66,7 @@ def load_data_for_ticker(ticker, update=False):
 	if df is not None:
 		STOCKS[ticker] = df
 		RATINGS[ticker] = get_stock_ratings(ticker, update=update)
+		FINANCIALS[ticker] = get_financial_info(ticker)
 		return True
 	else:
 		print('Unable to load data for ticker', ticker)
@@ -75,18 +79,83 @@ def load_analyst_data():
 	ANALYSTS = pandas.read_csv(analyst_file, index_col='Brokerage', parse_dates=['Date'])
 
 #------------------------------------------------------------------------------
+def need_refresh(file_name, t=7200):
+	if not os.path.exists(file_name):
+		return True
+	mtime = datetime.datetime.fromtimestamp(os.path.getmtime(file_name))
+	now = datetime.datetime.now()
+	return (now-mtime).total_seconds() > t
+
+#------------------------------------------------------------------------------
+def get_financial_info(ticker):
+	eps_history_file = os.path.join(INFO_DIR, 'eps_history.csv')
+	if not os.path.exists(eps_history_file):
+		with open(eps_history_file, 'w') as f:
+			f.write('Ticker,Date,Est,Actual\n')
+	trends_file = os.path.join(INFO_DIR, 'trends.csv')
+	if not os.path.exists(trends_file):
+		with open(trends_file, 'w') as f:
+			f.write('Ticker,EPS_Quarter,EPS_NextQuarter,EPS_Year,EPS_NextYear,Growth_Quarter,Growth_NextQuarter,Growth_Year,Growth_NextYear,Date\n')
+	earnings_df = pandas.read_csv(eps_history_file, index_col=['Ticker','Date'], parse_dates=['Date'])
+	trends_df = pandas.read_csv(trends_file, index_col=['Ticker'], parse_dates=['Date'])
+	update = False
+	# print('>', ticker, trends_df.loc[ticker].Date, type(trends_df.loc[ticker].Date))
+	if (ticker not in trends_df.index): 
+		update = True
+	elif datetime.datetime.today() - datetime.timedelta(days=7) > pandas.to_datetime(trends_df.loc[ticker].Date):
+		update = True
+	if update:
+		ignore = False
+		try:
+			Debug('Update financial info for', ticker)
+			info = get_analysts_info(ticker)
+			if ('Earnings Estimate' in info) and ('EPS Trend' in info) and ('Growth Estimates' in info):
+				eps_history = info['Earnings History']
+				for c in eps_history.columns[1:]:
+					earnings_df.loc[(ticker, pandas.to_datetime(c)), : ] = [
+						float(eps_history[c].iloc[0]), 
+						float(eps_history[c].iloc[1])]
+
+				eps_trend = info['EPS Trend']
+				growth = info['Growth Estimates']
+				values = list(eps_trend.iloc[0][1:].values)
+				for i in range(4):
+					if pandas.isnull(growth.iloc[i][1]):
+						values.append(0)
+					else:
+						values.append(float(growth.iloc[i][1].strip('%').replace(',','')))
+				values.append(datetime.datetime.today())
+				trends_df.loc[ticker, :] = values
+			else:
+				ignore = True
+		except:
+			ignore = True
+
+		if ignore:
+			earnings_df.loc[(ticker, pandas.to_datetime('1975-01-01')), : ] = [0,0]
+			trends_df.loc[ticker, :] = [0,0,0,0,0,0,0,0,datetime.datetime.today()]
+		earnings_df.sort_index(inplace=True)
+		earnings_df.to_csv(eps_history_file)
+		trends_df.sort_index(inplace=True)
+		trends_df.to_csv(trends_file)
+	result = dict(
+		eps = earnings_df.loc[(ticker,)][0:4],
+		trends = trends_df.loc[ticker]
+	)
+	return result
+
+
+#------------------------------------------------------------------------------
 def get_stock_prices(stock, days=365*5, update=False):
 	try:
 		saved_file = os.path.join(STOCKS_DIR, stock+'.csv')
-		mtime = datetime.datetime.fromtimestamp(os.path.getmtime(saved_file))
-		now = datetime.datetime.now()
-		if not os.path.exists(saved_file) or (update and (now-mtime).seconds>7200):
+		Debug('Reading stock prices from', saved_file)
+		if not os.path.exists(saved_file) or (update and need_refresh(saved_file)):
 			today = datetime.datetime.today()
 			start = today - datetime.timedelta(days=days)
 			df = pdr.get_data_yahoo(stock, start=start, end=today)
 			df.to_csv(saved_file)
 		df = pandas.read_csv(saved_file, index_col='Date', parse_dates=['Date'])
-		Debug('Reading stock prices from', saved_file)
 		return df
 	except:
 		return None
@@ -94,11 +163,9 @@ def get_stock_prices(stock, days=365*5, update=False):
 #------------------------------------------------------------------------------
 def get_stock_ratings(stock, update=False):
 	rating_file = os.path.join(RATINGS_DIR, stock + '.csv')
-	mtime = datetime.datetime.fromtimestamp(os.path.getmtime(rating_file))
-	now = datetime.datetime.now()
-	if not os.path.exists(rating_file) or (update and (now-mtime).seconds>7200):
-		download_stock_ratings(stock)
 	Debug('Reading stock ratings from', rating_file)
+	if not os.path.exists(rating_file) or (update and need_refresh(rating_file)):
+		download_stock_ratings(stock)
 	df = pandas.read_csv(rating_file, index_col='Date', parse_dates=['Date'])
 	return df
 
@@ -167,6 +234,29 @@ def rating_to_color(rating):
 	if rating == 0:
 		return '#eee'
 	return '#f70202'
+
+#------------------------------------------------------------------------------
+def determine_start_date(start_date):
+	if len(STOCKS) < 1:
+		return None
+	dates = STOCKS[ list(STOCKS.keys())[0] ].index
+	if start_date == '1W':
+		return dates[-5]
+	if start_date == '1M':
+		return dates[-22]
+	if start_date == '2M':
+		return dates[-22*2]
+	if start_date == '3M':
+		return dates[-22*3]
+	if start_date == '6M':
+		return dates[-22*6]
+	if start_date == '1Y':
+		return dates[-253]
+	if start_date == '2Y':
+		return dates[-253*2]
+	if start_date == '3Y':
+		return dates[-253*3]
+	return None
 
 #------------------------------------------------------------------------------
 

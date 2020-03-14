@@ -8,6 +8,8 @@ from invest_layout_main import app_layout
 from invest_time_range import time_range_callback
 from invest_forecast import forecast_table, forecast_figure
 from invest_analysts import analyst_table, analyst_figure
+from invest_historical import historical_table, historical_figure, eps_figure, performance_figure
+from invest_trade import trade_table, trade_figure1
 
 #------------------------------------------------------------------------------
 
@@ -17,33 +19,31 @@ external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 app.layout = app_layout
 
+
 #------------------------------------------------------------------------------
-def build_table1(ticker_options, sort_by, week_range, analysis):
+def build_table1(ticker_options, start_date):
 	tickers = [t['value'] for t in ticker_options]
 	data, columns, row_selectable = [], [], 'single'
-	if analysis=='Forecast':
-		data, columns, row_selectable = forecast_table(tickers, sort_by, week_range)
+	data, columns, row_selectable = forecast_table(tickers, start_date)
 	return data, columns, row_selectable
 
 #------------------------------------------------------------------------------
 @app.callback(
 	Output('table1', 'selected_rows'),
 	[
-		Input('table1', 'sort_by'),
-		Input('time-range', 'value'),
+		Input('time-menu', 'value'),
+		Input('tickers', 'options'),
 	],
 	[
 		State('table1', 'data'),
 		State('table1', 'selected_rows'),
-		State('tickers', 'options'),
-		State('analysis-menu', 'value'),
 	]
 )
-def reset_table1_selected_rows(sort_by, week_range, old_data, old_selected_rows,  ticker_options, analysis):
+def reset_table1_selected_rows(start_date, ticker_options, old_data, old_selected_rows):
 	if not old_data:
 		return []
 	selected_tickers = [ old_data[i]['Stock'] for i in old_selected_rows ]
-	new_data, c, r = build_table1(ticker_options, sort_by, week_range, analysis)
+	new_data, c, r = build_table1(ticker_options, start_date)
 	rows = [ i for i in range(len(new_data)) if new_data[i]['Stock'] in selected_tickers ]
 	return rows
 
@@ -57,19 +57,17 @@ def reset_table1_selected_rows(sort_by, week_range, old_data, old_selected_rows,
 		Output('table1', 'row_selectable'),
 	],
 	[
-		Input('analysis-menu', 'value'),
 		Input('table1', 'selected_rows'),
+		Input('time-menu', 'value'),
 	],
 	[
 		State('tickers', 'options'),
-		State('time-range', 'value'),
-		State('table1', 'sort_by'),
 	]
 )
-def update_table1(analysis, selected_rows, ticker_options, week_range, sort_by):
+def update_table1(selected_rows, start_date, ticker_options):
 	if len(ticker_options)==0:
 		return [],[],'single'
-	return build_table1(ticker_options, sort_by, week_range, analysis)
+	return build_table1(ticker_options, start_date)
 
 #------------------------------------------------------------------------------
 # Callback for table2
@@ -81,21 +79,19 @@ def update_table1(analysis, selected_rows, ticker_options, week_range, sort_by):
 	],
 	[
 		Input('table1', 'data'),
-		Input('table2', 'sort_by'),
 	],
 	[
 		State('table1', 'selected_rows'),
-		State('time-range', 'value'),
-		State('analysis-menu', 'value'),
+		State('time-menu', 'value'),
+		# State('analysis-menu', 'value'),
 	]
 )
-def update_table2(table1_data, table2_sort_by, table1_selected_rows, week_range, analysis):
-	if not week_range or not table1_selected_rows or not table1_data:
+def update_table2(table1_data, table1_selected_rows, start_date):
+	if not start_date or not table1_selected_rows or not table1_data:
 		return [], []
 	# print('update_table2', table2_sort_by, table1_selected_rows, len(table1_data))
 	tickers = [table1_data[i]['Stock'] for i in table1_selected_rows]
-	if analysis=='Forecast':
-		return analyst_table(tickers[0], table2_sort_by, week_range)
+	return analyst_table(tickers[0], start_date)
 
 #------------------------------------------------------------------------------
 # Callback to plot figure1
@@ -107,16 +103,14 @@ def update_table2(table1_data, table2_sort_by, table1_selected_rows, week_range,
 	],
 	[
 		State('table1', 'selected_rows'),
-		State('time-range', 'value'),
-		State('analysis-menu', 'value'),
+		State('time-menu', 'value'),
 	]
 )
-def plot_figure1(table_data, selected_rows, week_range, analysis):
-	if not week_range or not selected_rows or not table_data:
+def plot_figure1(table_data, selected_rows, start_date):
+	if not start_date or not selected_rows or not table_data:
 		return dict(data=[],layout={})
 	tickers = [table_data[i]['Stock'] for i in selected_rows]
-	if analysis == 'Forecast':
-		return forecast_figure(tickers[0], week_range)
+	return analyst_figure(tickers[0], start_date)
 
 #------------------------------------------------------------------------------
 # Callback to plot figure2
@@ -128,40 +122,33 @@ def plot_figure1(table_data, selected_rows, week_range, analysis):
 	],
 	[
 		State('table1', 'selected_rows'),
-		State('time-range', 'value'),
-		State('analysis-menu', 'value'),
+		State('time-menu', 'value'),
 	]
 )
-def plot_figure2(table1_data, table1_selected_rows, week_range, analysis):
-	if not week_range or not table1_selected_rows or not table1_data:
+def plot_figure2(table1_data, table1_selected_rows, start_date):
+	if not start_date or not table1_selected_rows or not table1_data:
 		return dict(data=[],layout={})
 	tickers = [table1_data[i]['Stock'] for i in table1_selected_rows]
-	if analysis == 'Forecast':
-		return analyst_figure(tickers[0], week_range)
+	return forecast_figure(tickers[0], start_date)
 
 #------------------------------------------------------------------------------
-# Callback to time range slider
+# Callback to plot figure3
 #------------------------------------------------------------------------------
 @app.callback(
+	Output('figure3', 'figure'),
 	[
-		Output('time-range', 'min'),
-		Output('time-range', 'value'),
-		Output('time-range', 'marks'),
+		Input('table1', 'data'),
 	],
-	[ Input('time-menu', 'value')]
+	[
+		State('table1', 'selected_rows'),
+		State('time-menu', 'value')
+	]
 )
-def set_time_range(months_ago):
-	if months_ago is None:
-		months_ago = 1
-	return time_range_callback(months_ago)
-
-#------------------------------------------------------------------------------
-@app.callback(
-	Output('time-menu', 'value'),
-	[ Input('tickers', 'options') ]
-)
-def reset_time_menu(ticker_options):
-	return 1
+def plot_figure3(table1_data, table1_selected_rows, start_date):
+	if not start_date or not table1_selected_rows or not table1_data:
+		return dict(data=[],layout={})
+	tickers = [table1_data[i]['Stock'] for i in table1_selected_rows]
+	return eps_figure(tickers[0], start_date)
 
 #------------------------------------------------------------------------------
 @app.callback(
@@ -174,7 +161,6 @@ def reset_time_menu(ticker_options):
 	]
 )
 def load_portfolio(name):
-	# print('load_portfolio:', name)
 	if name=='':
 		return portfolio_list(), []
 	portfolio_name = name
@@ -198,7 +184,17 @@ def load_portfolio(name):
 	]
 )
 def action_menu_callback(action, table1_data, table1_selected_rows, text_input, portfolio_name):
-	if action == 'Add symbol' and text_input.strip() != '' and portfolio_name != '':
+	global INDEX_SYMBOL
+
+	if action == 'Compare symbol' and text_input.strip() != '' and portfolio_name != '':
+		ticker_name = text_input.strip().upper()
+		res = load_data_for_ticker(ticker_name)
+		if res == False:
+			print('Unable to add {}'.format(ticker_name))
+			return portfolio_name
+		INDEX_SYMBOL = ticker_name
+
+	elif action == 'Add symbol' and text_input.strip() != '' and portfolio_name != '':
 		ticker_name = text_input.strip().upper()
 		res = load_data_for_ticker(ticker_name)
 		if res == False:
@@ -211,7 +207,7 @@ def action_menu_callback(action, table1_data, table1_selected_rows, text_input, 
 			for t in sorted(tickers):
 				fp.write(t + '\n')
 		print('{} is added to {}'.format(ticker_name, portfolio_name))
-		return portfolio_name
+		INDEX_SYMBOL = ''
 
 	elif action == 'Save symbols' and len(table1_selected_rows)>0:
 		with open(os.path.join(PORTFOLIOS_DIR, '__SAVED__')) as fp:
@@ -223,7 +219,7 @@ def action_menu_callback(action, table1_data, table1_selected_rows, text_input, 
 			for t in sorted(tickers):
 				fp.write(t + '\n')
 		print('{} saved to __SAVED__'.format(to_be_saved))
-		return portfolio_name
+		INDEX_SYMBOL = ''
 
 	elif action == 'Remove symbols' and len(table1_selected_rows)>0:
 		with open(os.path.join(PORTFOLIOS_DIR, portfolio_name)) as fp:
@@ -235,7 +231,7 @@ def action_menu_callback(action, table1_data, table1_selected_rows, text_input, 
 			for t in sorted(tickers):
 				fp.write(t + '\n')
 		print('{} removed from {}'.format(to_be_removed, portfolio_name))
-		return portfolio_name
+		INDEX_SYMBOL = ''
 
 	elif action == 'Add portfolio' and text_input.strip() != '':
 		new_portfolio = text_input.strip()
@@ -253,13 +249,15 @@ def action_menu_callback(action, table1_data, table1_selected_rows, text_input, 
 			print('Portfolio {} does not exist.'.format(portfolio_name))
 		else:
 			os.remove(to_be_removed)
+		INDEX_SYMBOL = ''
 		return ''
 
 	elif action == 'Update portfolio' and portfolio_name != '':
 		load_data_for_portfolio(portfolio_name, update=True)
-		return portfolio_name
+		if INDEX_SYMBOL != '':
+			load_data_for_ticker(INDEX_SYMBOL)
 
-	return ''
+	return portfolio_name
 
 #------------------------------------------------------------------------------
 

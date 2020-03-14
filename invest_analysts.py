@@ -21,7 +21,7 @@ from invest_utils import *
 )
 '''
 #------------------------------------------------------------------------------
-def analyst_table(ticker, sort_by, week_range):
+def analyst_table(ticker, start_date):
 	rating_label={0:'?',1:'Sell',2:'Hold',3:'Buy',4:'Outperform',5:'Strong Buy'}
 	columns = [
 		{
@@ -42,26 +42,14 @@ def analyst_table(ticker, sort_by, week_range):
 			'id':'Rating',
 		},
 		{
-			'name':'Price',
-			'id':'Price',
-			'type':'numeric',
-			'format': FormatTemplate.money(0),
-		},
-		{
-			'name':'Forecast',
 			'id':'Forecast',
-			'type':'numeric',
-			'format': FormatTemplate.money(0),
-		},
-		{
-			'id':'Return',
-			'name':'Return',
+			'name':'Forecast',
 			'type':'numeric',
 			'format': FormatTemplate.percentage(1).sign(Sign.positive),
 		},
 	]
-	start = datetime.datetime.today() - datetime.timedelta(days=-week_range[0]*7)
-	end = datetime.datetime.today() - datetime.timedelta(days=-week_range[1]*7)
+	start = determine_start_date(start_date)
+	end = datetime.datetime.today()
 
 	stock = STOCKS[ticker]
 	series = stock['Adj Close'][start:end]
@@ -83,12 +71,12 @@ def analyst_table(ticker, sort_by, week_range):
 			'Forecaster':item.Analyst,
 			'Trust':score,
 			'Rating': rating_label[item.Rating],
-			'Price': close_price,
-			'Forecast':item.Price,
-			'Return':item.Price/close_price-1,
+			# 'Price': close_price,
+			# 'Forecast':item.Price,
+			'Forecast':item.Price/close_price-1,
 		})
-	if len(sort_by) > 0:
-		data = sorted(data, key=lambda c: c[sort_by[0]['column_id']], reverse=sort_by[0]['direction']=='asc')
+	# if len(sort_by) > 0:
+	# 	data = sorted(data, key=lambda c: c[sort_by[0]['column_id']], reverse=sort_by[0]['direction']=='asc')
 	return data, columns
 
 #------------------------------------------------------------------------------
@@ -104,10 +92,10 @@ def analyst_table(ticker, sort_by, week_range):
 )
 '''
 #------------------------------------------------------------------------------
-def analyst_figure(ticker, week_range):
+def analyst_figure(ticker, start_date):
 	plot_data = []
-	start = datetime.datetime.today() - datetime.timedelta(days=-week_range[0]*7)
-	end = datetime.datetime.today() - datetime.timedelta(days=-week_range[1]*7) + datetime.timedelta(days=1)
+	start = determine_start_date(start_date)
+	end = datetime.datetime.today()
 	rating_label={0:'?',1:'Sell',2:'Hold',3:'Buy',4:'Outperform',5:'Strong Buy'}
 	stock = STOCKS[ticker]
 	series = stock['Adj Close'][start:end]
@@ -178,12 +166,19 @@ def analyst_figure(ticker, week_range):
 		},
 		showlegend=False,
 	))
+
 	if len(returns)==0:
 		layout = dict()
 	else:
-		layout=dict(title = '{} - Average return at time of forecast: {}%'.format(
-			ticker,
-			round(100*np.mean(returns),1)))
+		layout=dict(
+			title = '{}% return of investment'.format(
+				round(100*(series.iloc[-1]/series.iloc[0] - 1), 2),
+				# series.index[0].strftime('%m.%d.%y'),
+				# series.index[-1].strftime('%m.%d.%y'),
+			),
+           	margin={'l': 40, 'b': 20, 't': 50, 'r': 40},
+			height=350,
+		)
 	return dict(data=plot_data, layout=layout)
 #------------------------------------------------------------------------------
 

@@ -18,7 +18,7 @@ portfolios_menu = html.Div(
 			dcc.Dropdown(
 				id = 'portfolios-menu', 
 				options = [],
-				value = '', 
+				value = '',
 				clearable = False,
 				placeholder='PORTFOLIO',
 			)]),
@@ -30,6 +30,7 @@ action_menu = html.Div(
 		dcc.Dropdown(
 			id = 'action-menu', 
 			options=[
+				{'label':'Compare symbol', 'value':'Compare symbol'},
 				{'label':'Add symbol', 'value':'Add symbol'},
 				{'label':'Save symbol(s)', 'value':'Save symbols'},
 				{'label':'Remove symbol(s)', 'value':'Remove symbols'},
@@ -38,29 +39,28 @@ action_menu = html.Div(
 				{'label':'Update portfolio data', 'value':'Update portfolio'},
 			], 
 			value = '', 
-			clearable=False,
+			clearable=True,
 			placeholder='ACTION'),
 	className = 'two columns',
 )
 
 #----------------------------------------------------------------------
 time_menu =	html.Div(
-	dcc.Dropdown(id='time-menu', 
+	dcc.RadioItems(id='time-menu', 
 		options = [
-			{'label':'1 Month','value':1},
-			{'label':'2 Months','value':2},
-			{'label':'3 Months','value':3},
-			{'label':'6 Months','value':6},
-			{'label':'1 Year','value':12},
-			{'label':'2 Years','value':2*12},
-			{'label':'3 Years','value':3*12},
-			{'label':'4 Years','value':4*12},
-			{'label':'5 Years','value':5*12},
+			{'label':'1W','value':'1W'},
+			{'label':'1M','value':'1M'},
+			{'label':'2M','value':'2M'},
+			{'label':'3M','value':'3M'},
+			{'label':'6M','value':'6M'},
+			{'label':'1Y','value':'1Y'},
+			{'label':'2Y','value':'2Y'},
+			{'label':'3Y','value':'3Y'},
 		],
-		value=1,
-		clearable = False,
+		value='1W',
+        labelStyle={'display': 'inline-block'},
 	), 
-	className = 'two columns',
+	className = 'six columns',
 )
 
 #----------------------------------------------------------------------
@@ -68,9 +68,10 @@ analysis_menu =html.Div(
 	dcc.Dropdown(id='analysis-menu', 
 		options = [
 			{'label':'Forecast','value':'Forecast'},
-			{'label':'Historical','value':'Historical'},
+			{'label':'Finance','value':'Finance'},
+			{'label':'Trade','value':'Trade'},
 		],
-		value = 'Forecast',
+		value = 'Trade',
 		clearable = False,
 	), 
 	className = 'two columns',
