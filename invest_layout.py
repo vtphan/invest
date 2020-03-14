@@ -128,11 +128,11 @@ app_layout = html.Div([
 		html.Div(style={'margin-top':'1em', 'width':'100%'}),
 
 		html.Div(
-			setup_table('table2'),
+			setup_table('secondary-table'),
 			style={'width':'49%', 'display':'inline-block', 'padding':'0', 'margin':0}),
 
 		html.Div(
-			setup_table('table1'),
+			setup_table('main-table'),
 			style={'width':'49%', 'display':'inline-block', 'padding':'0', 'margin':0}),
 
 		# time_range_layout(),
