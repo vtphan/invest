@@ -94,11 +94,10 @@ def secondary_table_callback(data, selected_rows, start_date):
 		State('time-menu', 'value'),
 	]
 )
-def figure1_callback(table_data, selected_rows, start_date):
-	if not start_date or not selected_rows or not table_data:
+def figure1_callback(data, selected_rows, start_date):
+	if not start_date or not selected_rows or not data:
 		return dict(data=[],layout={})
-	tickers = [table_data[i]['Stock'] for i in selected_rows]
-	# return analyst_figure(tickers[0], start_date)
+	tickers = [data[i]['Stock'] for i in selected_rows]
 	return plot_figure1(tickers[0], start_date)
 
 #------------------------------------------------------------------------------
@@ -106,18 +105,18 @@ def figure1_callback(table_data, selected_rows, start_date):
 	Output('figure2', 'figure'),
 	[
 		Input('main-table', 'data'),
+		Input('index-menu', 'value'),
 	],
 	[
 		State('main-table', 'selected_rows'),
 		State('time-menu', 'value'),
 	]
 )
-def figure2_callback(data, selected_rows, start_date):
-	if not start_date or not selected_rows or not data:
+def figure2_callback(table_data, index, selected_rows, start_date):
+	if not start_date or not selected_rows or not table_data:
 		return dict(data=[],layout={})
-	tickers = [data[i]['Stock'] for i in selected_rows]
-	# return forecast_figure(tickers[0], start_date)
-	return plot_figure2(tickers[0], start_date)
+	tickers = [table_data[i]['Stock'] for i in selected_rows]
+	return plot_figure2(tickers[0], start_date, index)
 
 #------------------------------------------------------------------------------
 @app.callback(
@@ -134,7 +133,6 @@ def figure3_callback(data, selected_rows, start_date):
 	if not start_date or not selected_rows or not data:
 		return dict(data=[],layout={})
 	tickers = [data[i]['Stock'] for i in selected_rows]
-	# return eps_figure(tickers[0], start_date)
 	return plot_figure3(tickers[0], start_date)
 
 #------------------------------------------------------------------------------
@@ -159,7 +157,10 @@ def load_portfolio(name):
 
 #------------------------------------------------------------------------------
 @app.callback(
-	Output('portfolios-menu', 'value'),
+	[
+		Output('portfolios-menu', 'value'),
+		Output('index-menu', 'options'),
+	],
 	[ 
 		Input('action-menu', 'value'),
 	],
@@ -168,20 +169,11 @@ def load_portfolio(name):
 		State('main-table', 'selected_rows'),
 		State('text-input', 'value'), 
 		State('portfolios-menu', 'value'), 
+		State('index-menu', 'value'),
 	]
 )
-def action_menu_callback(action, data, selected_rows, text_input, portfolio_name):
-	global INDEX_SYMBOL
-
-	if action == 'Compare symbol' and text_input.strip() != '' and portfolio_name != '':
-		ticker_name = text_input.strip().upper()
-		res = load_data_for_ticker(ticker_name)
-		if res == False:
-			print('Unable to add {}'.format(ticker_name))
-			return portfolio_name
-		INDEX_SYMBOL = ticker_name
-
-	elif action == 'Add symbol' and text_input.strip() != '' and portfolio_name != '':
+def action_menu_callback(action, data, selected_rows, text_input, portfolio_name, index):
+	if action == 'Add symbol' and text_input.strip() != '' and portfolio_name != '':
 		ticker_name = text_input.strip().upper()
 		res = load_data_for_ticker(ticker_name)
 		if res == False:
@@ -194,7 +186,6 @@ def action_menu_callback(action, data, selected_rows, text_input, portfolio_name
 			for t in sorted(tickers):
 				fp.write(t + '\n')
 		print('{} is added to {}'.format(ticker_name, portfolio_name))
-		INDEX_SYMBOL = ''
 
 	elif action == 'Save symbols' and len(selected_rows)>0:
 		with open(os.path.join(PORTFOLIOS_DIR, '__SAVED__')) as fp:
@@ -206,7 +197,6 @@ def action_menu_callback(action, data, selected_rows, text_input, portfolio_name
 			for t in sorted(tickers):
 				fp.write(t + '\n')
 		print('{} saved to __SAVED__'.format(to_be_saved))
-		INDEX_SYMBOL = ''
 
 	elif action == 'Remove symbols' and len(selected_rows)>0:
 		with open(os.path.join(PORTFOLIOS_DIR, portfolio_name)) as fp:
@@ -218,7 +208,19 @@ def action_menu_callback(action, data, selected_rows, text_input, portfolio_name
 			for t in sorted(tickers):
 				fp.write(t + '\n')
 		print('{} removed from {}'.format(to_be_removed, portfolio_name))
-		INDEX_SYMBOL = ''
+
+	elif action == 'Add index' and text_input.strip() != '':
+		ticker_name = text_input.strip().upper()
+		with open(INDEX_FILE, 'a+') as f:
+			f.write('{}\n'.format(ticker_name))
+		Debug('{} is added to {}.'.format(ticker_name, INDEX_FILE))
+
+	elif action == 'Remove index' and index != '':
+		indexes = [ line.strip() for line in open(INDEX_FILE).readlines() ]
+		indexes.remove(index)
+		with open(INDEX_FILE, 'w') as f:
+			for idx in indexes:
+				f.write('{}\n'.format(idx))
 
 	elif action == 'Add portfolio' and text_input.strip() != '':
 		new_portfolio = text_input.strip()
@@ -228,7 +230,7 @@ def action_menu_callback(action, data, selected_rows, text_input, portfolio_name
 		else:
 			with open(output_file, 'w') as f:
 				f.write('')
-		return new_portfolio
+		return new_portfolio, index_list()
 
 	elif action == 'Remove portfolio' and portfolio_name != '':
 		to_be_removed = os.path.join(PORTFOLIOS_DIR, portfolio_name)
@@ -236,15 +238,12 @@ def action_menu_callback(action, data, selected_rows, text_input, portfolio_name
 			print('Portfolio {} does not exist.'.format(portfolio_name))
 		else:
 			os.remove(to_be_removed)
-		INDEX_SYMBOL = ''
-		return ''
+		return '', index_list()
 
 	elif action == 'Update portfolio' and portfolio_name != '':
 		load_data_for_portfolio(portfolio_name, update=True)
-		if INDEX_SYMBOL != '':
-			load_data_for_ticker(INDEX_SYMBOL)
 
-	return portfolio_name
+	return portfolio_name, index_list()
 
 #------------------------------------------------------------------------------
 

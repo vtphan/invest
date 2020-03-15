@@ -149,9 +149,7 @@ def secondary_table(ticker, start_date):
 			'Forecaster':item.Analyst,
 			'Trust':score,
 			'Rating': rating_label[item.Rating],
-			# 'Price': close_price,
-			# 'Forecast':item.Price,
-			'Forecast':item.Price/close_price-1,
+			'Forecast': 0 if item.Price == 0 else item.Price/close_price-1,
 		})
 	return data, columns
 

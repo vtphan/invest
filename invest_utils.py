@@ -7,11 +7,11 @@ from bs4 import BeautifulSoup
 import pandas
 import pandas_datareader as pdr
 from yahoo_fin.stock_info import get_analysts_info
+import holidays
 
 #------------------------------------------------------------------------------
 
 DEBUG = True
-INDEX_SYMBOL = ''
 
 #------------------------------------------------------------------------------
 
@@ -19,6 +19,7 @@ PORTFOLIOS_DIR = './Portfolios'
 STOCKS_DIR = './Stocks'
 RATINGS_DIR = './Ratings'
 INFO_DIR = './Info'
+INDEX_FILE = './Info/index.txt'
 
 #------------------------------------------------------------------------------
 # Global dataframes. Loaded once.
@@ -38,19 +39,31 @@ def Debug(*s):
 		print(*s)
 
 #------------------------------------------------------------------------------
-def setup(update=False):
-	load_analyst_data()
-	for portfolio in os.listdir(PORTFOLIOS_DIR):
-		load_data_for_portfolio(portfolio, update)
-	
+
+VeteransDay = datetime.date(datetime.date.today().year, 11, 11)
+Holidays = holidays.UnitedStates(years=datetime.date.today().year, state='DE')
+Holidays = { k:v for k,v in Holidays.items() if k != VeteransDay }
+
 #------------------------------------------------------------------------------
-def load_data_for_portfolio(portfolio, update=False):
+def setup():
+	load_analyst_data()
+	tickers = set()
+	for portfolio in os.listdir(PORTFOLIOS_DIR):
+		for t in open(os.path.join(PORTFOLIOS_DIR,portfolio)).readlines():
+			t = t.strip()
+			if t:
+				tickers.add(t)
+	for t in tickers:
+		load_data_for_ticker(t)
+
+#------------------------------------------------------------------------------
+def load_data_for_portfolio(portfolio):
 	path = os.path.join(PORTFOLIOS_DIR, portfolio)
 	with open(path) as f:
 		tickers = [ t.strip() for t in f.readlines() ]
 	to_be_deleted = []
 	for t in tickers:
-		res = load_data_for_ticker(t, update)
+		res = load_data_for_ticker(t)
 		if res == False:
 			to_be_deleted.append(t)
 	for t in to_be_deleted:
@@ -60,12 +73,12 @@ def load_data_for_portfolio(portfolio, update=False):
 			f.write('{}\n'.format(t))
 
 #------------------------------------------------------------------------------
-def load_data_for_ticker(ticker, update=False):
+def load_data_for_ticker(ticker):
 	global STOCKS, RATINGS
-	df = get_stock_prices(ticker, update=update)
+	df = get_stock_prices(ticker)
 	if df is not None:
 		STOCKS[ticker] = df
-		RATINGS[ticker] = get_stock_ratings(ticker, update=update)
+		RATINGS[ticker] = get_stock_ratings(ticker)
 		FINANCIALS[ticker] = get_financial_info(ticker)
 		return True
 	else:
@@ -79,32 +92,34 @@ def load_analyst_data():
 	ANALYSTS = pandas.read_csv(analyst_file, index_col='Brokerage', parse_dates=['Date'])
 
 #------------------------------------------------------------------------------
-def need_refresh(file_name, t=7200):
+# determine if file_name has been updated (modified) after the market is last closed.
+#------------------------------------------------------------------------------
+def need_refresh(file_name):
+	def last_close():
+		d = datetime.date.today()
+		while d.weekday() in [5,6] or d in Holidays:
+			d -= datetime.timedelta(days=1)
+		return datetime.datetime(d.year, d.month, d.day, 17)
+
 	if not os.path.exists(file_name):
 		return True
+	
 	mtime = datetime.datetime.fromtimestamp(os.path.getmtime(file_name))
-	now = datetime.datetime.now()
-	return (now-mtime).total_seconds() > t
+	return mtime < last_close()
 
 #------------------------------------------------------------------------------
 def get_financial_info(ticker):
 	eps_history_file = os.path.join(INFO_DIR, 'eps_history.csv')
-	if not os.path.exists(eps_history_file):
-		with open(eps_history_file, 'w') as f:
-			f.write('Ticker,Date,Est,Actual\n')
 	trends_file = os.path.join(INFO_DIR, 'trends.csv')
-	if not os.path.exists(trends_file):
-		with open(trends_file, 'w') as f:
-			f.write('Ticker,EPS_Quarter,EPS_NextQuarter,EPS_Year,EPS_NextYear,Growth_Quarter,Growth_NextQuarter,Growth_Year,Growth_NextYear,Date\n')
-	earnings_df = pandas.read_csv(eps_history_file, index_col=['Ticker','Date'], parse_dates=['Date'])
-	trends_df = pandas.read_csv(trends_file, index_col=['Ticker'], parse_dates=['Date'])
-	update = False
-	# print('>', ticker, trends_df.loc[ticker].Date, type(trends_df.loc[ticker].Date))
-	if (ticker not in trends_df.index): 
-		update = True
-	elif datetime.datetime.today() - datetime.timedelta(days=7) > pandas.to_datetime(trends_df.loc[ticker].Date):
-		update = True
-	if update:
+	if need_refresh(eps_history_file):
+		if not os.path.exists(eps_history_file):
+			with open(eps_history_file, 'w') as f:
+				f.write('Ticker,Date,Est,Actual\n')
+		if not os.path.exists(trends_file):
+			with open(trends_file, 'w') as f:
+				f.write('Ticker,EPS_Quarter,EPS_NextQuarter,EPS_Year,EPS_NextYear,Growth_Quarter,Growth_NextQuarter,Growth_Year,Growth_NextYear,Date\n')
+		earnings_df = pandas.read_csv(eps_history_file, index_col=['Ticker','Date'], parse_dates=['Date'])
+		trends_df = pandas.read_csv(trends_file, index_col=['Ticker'], parse_dates=['Date'])
 		ignore = False
 		try:
 			Debug('Update financial info for', ticker)
@@ -138,37 +153,38 @@ def get_financial_info(ticker):
 		earnings_df.to_csv(eps_history_file)
 		trends_df.sort_index(inplace=True)
 		trends_df.to_csv(trends_file)
+
+	earnings_df = pandas.read_csv(eps_history_file, index_col=['Ticker','Date'], parse_dates=['Date'])
+	trends_df = pandas.read_csv(trends_file, index_col=['Ticker'], parse_dates=['Date'])
 	result = dict(
 		eps = earnings_df.loc[(ticker,)][0:4],
 		trends = trends_df.loc[ticker]
 	)
 	return result
 
-
 #------------------------------------------------------------------------------
-def get_stock_prices(stock, days=365*5, update=False):
+def get_stock_prices(stock, start=datetime.date(2015,1,1)):
 	try:
 		saved_file = os.path.join(STOCKS_DIR, stock+'.csv')
 		Debug('Reading stock prices from', saved_file)
-		if not os.path.exists(saved_file) or (update and need_refresh(saved_file)):
-			today = datetime.datetime.today()
-			start = today - datetime.timedelta(days=days)
-			df = pdr.get_data_yahoo(stock, start=start, end=today)
-			df.to_csv(saved_file)
+		if need_refresh(saved_file):
+			pdr.get_data_yahoo(stock, start=start).to_csv(saved_file)
 		df = pandas.read_csv(saved_file, index_col='Date', parse_dates=['Date'])
 		return df
 	except:
 		return None
 
 #------------------------------------------------------------------------------
-def get_stock_ratings(stock, update=False):
-	rating_file = os.path.join(RATINGS_DIR, stock + '.csv')
-	Debug('Reading stock ratings from', rating_file)
-	if not os.path.exists(rating_file) or (update and need_refresh(rating_file)):
-		download_stock_ratings(stock)
-	df = pandas.read_csv(rating_file, index_col='Date', parse_dates=['Date'])
-	return df
-
+def get_stock_ratings(stock):
+	try:
+		rating_file = os.path.join(RATINGS_DIR, stock + '.csv')
+		Debug('Reading stock ratings from', rating_file)
+		if need_refresh(rating_file):
+			download_stock_ratings(stock)
+		df = pandas.read_csv(rating_file, index_col='Date', parse_dates=['Date'])
+		return df
+	except:
+		return None
 
 #------------------------------------------------------------------------------
 def download_stock_ratings(ticker):
@@ -250,22 +266,34 @@ def determine_start_date(start_date):
 		return dates[-22*3]
 	if start_date == '6M':
 		return dates[-22*6]
+	if start_date == '9M':
+		return dates[-22*9]
 	if start_date == '1Y':
 		return dates[-253]
+	if start_date == '1.5Y':
+		return dates[-380]
 	if start_date == '2Y':
 		return dates[-253*2]
 	if start_date == '3Y':
 		return dates[-253*3]
+	if start_date == '3Y':
+		return dates[-253*4]
 	return None
 
 #------------------------------------------------------------------------------
-
 def portfolio_list():
 	saved_file = os.path.join(PORTFOLIOS_DIR, '__SAVED__')
 	if not os.path.exists(saved_file):
 		with open(saved_file,'w') as f:
 			f.write('')
 	return [dict(label=p, value=p) for p in sorted(os.listdir(PORTFOLIOS_DIR))]
+
+#------------------------------------------------------------------------------
+def index_list():
+	if not os.path.exists(INDEX_FILE):
+		with open(INDEX_FILE,'w') as f:
+			f.write('')
+	return [dict(label=line.strip(), value=line.strip()) for line in sorted(open(INDEX_FILE).readlines()) ]
 
 #------------------------------------------------------------------------------
 

@@ -2,6 +2,7 @@ import dash_core_components as dcc
 import dash_html_components as html
 from invest_time_range import time_range_layout
 import dash_table
+from invest_utils import index_list
 
 #---------------------------------------------------------------------------------------
 def setup_table(table_id):
@@ -33,13 +34,7 @@ def setup_table(table_id):
 	)
 
 #---------------------------------------------------------------------------------------
-hidden_divs = html.Div([
-	dcc.Checklist(
-		id='tickers', 
-		options=[],
-		value=[], 
-		labelStyle={'display': 'none'}),
-], style={'width':'90%'})
+hidden_divs = html.Div(dcc.Checklist(id='tickers',options=[],value=[],labelStyle={'display':'none'}))
 
 #----------------------------------------------------------------------
 text_input = html.Div(
@@ -65,14 +60,27 @@ portfolios_menu = html.Div(
 )
 
 #----------------------------------------------------------------------
+index_menu = html.Div(
+	dcc.Dropdown(
+		id = 'index-menu', 
+		options = index_list(),
+		value = '',
+		clearable = True,
+		placeholder='INDEX',
+	),
+	className = 'two columns',
+)
+
+#----------------------------------------------------------------------
 action_menu = html.Div(
 		dcc.Dropdown(
 			id = 'action-menu', 
 			options=[
-				{'label':'Compare symbol', 'value':'Compare symbol'},
 				{'label':'Add symbol', 'value':'Add symbol'},
 				{'label':'Save symbol(s)', 'value':'Save symbols'},
 				{'label':'Remove symbol(s)', 'value':'Remove symbols'},
+				{'label':'Add index', 'value':'Add index'},
+				{'label':'Remove index', 'value':'Remove index'},
 				{'label':'Add portfolio', 'value':'Add portfolio'},
 				{'label':'Remove portfolio', 'value':'Remove portfolio'},
 				{'label':'Update portfolio data', 'value':'Update portfolio'},
@@ -92,14 +100,17 @@ time_menu =	html.Div(
 			{'label':'2M','value':'2M'},
 			{'label':'3M','value':'3M'},
 			{'label':'6M','value':'6M'},
+			{'label':'9M','value':'9M'},
 			{'label':'1Y','value':'1Y'},
+			{'label':'1.5Y','value':'1.5Y'},
 			{'label':'2Y','value':'2Y'},
 			{'label':'3Y','value':'3Y'},
+			{'label':'4Y','value':'4Y'},
 		],
 		value='1W',
         labelStyle={'display': 'inline-block'},
 	), 
-	className = 'six columns',
+	className = 'four columns',
 )
 
 #---------------------------------------------------------------------------------------
@@ -107,6 +118,7 @@ time_menu =	html.Div(
 app_layout = html.Div([	
 	html.Div([
 		portfolios_menu,
+		index_menu,
 		action_menu,
 		text_input,
 		time_menu,
