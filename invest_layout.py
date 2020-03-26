@@ -25,7 +25,7 @@ def setup_table(table_id):
 		],
 		style_table={
 			'maxHeight':'280px',
-			'width':'90%',
+			'width':'97%',
 			'margin':'0 auto',
 			'overflowX':'scroll', 
 			'overflowY':'scroll',
@@ -92,22 +92,39 @@ action_menu = html.Div(
 )
 
 #----------------------------------------------------------------------
+time_slider = html.Div(
+	dcc.Slider(
+		id = 'time-slider',
+		min = 1,
+		max = 52,
+		step = None,
+		marks = { i : '{}w'.format(i) for i in range(1,53) },
+		value = 1,
+	),
+	className = 'four columns',
+)
+
+#----------------------------------------------------------------------
 time_menu =	html.Div(
 	dcc.RadioItems(id='time-menu', 
 		options = [
 			{'label':'1W','value':'1W'},
+			{'label':'2W','value':'2W'},
+			{'label':'3W','value':'3W'},
 			{'label':'1M','value':'1M'},
+			{'label':'1.5M','value':'1.5M'},
 			{'label':'2M','value':'2M'},
 			{'label':'3M','value':'3M'},
+			{'label':'4M','value':'4M'},
 			{'label':'6M','value':'6M'},
 			{'label':'9M','value':'9M'},
 			{'label':'1Y','value':'1Y'},
 			{'label':'1.5Y','value':'1.5Y'},
 			{'label':'2Y','value':'2Y'},
-			{'label':'3Y','value':'3Y'},
-			{'label':'4Y','value':'4Y'},
+			# {'label':'3Y','value':'3Y'},
+			# {'label':'4Y','value':'4Y'},
 		],
-		value='1W',
+		value='2W',
         labelStyle={'display': 'inline-block'},
 	), 
 	className = 'four columns',
@@ -121,19 +138,20 @@ app_layout = html.Div([
 		index_menu,
 		action_menu,
 		text_input,
-		time_menu,
+		time_slider,
+		# time_menu,
 	], style={'width':'95%', 'margin':'0 auto', 'height':'55px'}),
 
 	# 3 figures (top row)
 	html.Div(
 		dcc.Graph(id='figure1', config=dict(displayModeBar=False)), 
-		style={'height':'350px', 'width':'35%', 'display':'inline-block', 'padding':'0', 'margin':'0'}),
+		style={'height':'405px', 'width':'36%', 'display':'inline-block', 'padding':'0', 'margin':'0'}),
 	html.Div(
 		dcc.Graph(id='figure2', config=dict(displayModeBar=False)), 
-		style={'height':'350px', 'width':'35%', 'display':'inline-block', 'padding':'0', 'margin':'0'}),
+		style={'height':'405px', 'width':'36%', 'display':'inline-block', 'padding':'0', 'margin':'0'}),
 	html.Div(
 		dcc.Graph(id='figure3', config=dict(displayModeBar=False)), 
-		style={'height':'350px', 'width':'30%', 'display':'inline-block', 'padding':'0', 'margin':'0'}),
+		style={'height':'405px', 'width':'27%', 'display':'inline-block', 'padding':'0', 'margin':'0'}),
 
 	# 2 tables (bottom row)
 	html.Div([
@@ -141,11 +159,11 @@ app_layout = html.Div([
 
 		html.Div(
 			setup_table('secondary-table'),
-			style={'width':'49%', 'display':'inline-block', 'padding':'0', 'margin':0}),
+			style={'width':'44%', 'display':'inline-block', 'padding':'0', 'margin':0}),
 
 		html.Div(
 			setup_table('main-table'),
-			style={'width':'49%', 'display':'inline-block', 'padding':'0', 'margin':0}),
+			style={'width':'55%', 'display':'inline-block', 'padding':'0', 'margin':0}),
 
 		# time_range_layout(),
 	], style={'width':'100%', 'margin':'0 auto'}),

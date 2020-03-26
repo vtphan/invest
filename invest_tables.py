@@ -15,15 +15,21 @@ def main_table(tickers, start_date):
 			# 'presentation':'markdown',
 		},
 		{
-			'name': ['Rating','Score'],
+			'name': ['Forecast','Score'],
 			'id':'Score',
 			'type':'numeric',
 			'format': Format(precision=2,scheme=Scheme.fixed),
 		},
 		{
-			'name': ['Rating','Count'],
-			'id':'Count',
+			'name': ['Forecast','N'],
+			'id':'N',
 			'type':'numeric',
+		},
+		{
+			'name': ['Forecast', 'ROI'],
+			'id':'ROI',
+			'type':'numeric',
+			'format': FormatTemplate.percentage(1).sign(Sign.positive),
 		},
 		{
 			'name': ['Growth Estimate', 'Qrt'],
@@ -60,15 +66,16 @@ def main_table(tickers, start_date):
 		stock_df = STOCKS[t][start:end]
 		rating_df = RATINGS[t][start:end]
 		trends = FINANCIALS[t]['trends']
-		if len(stock_df) > 0 and len(rating_df):
+		if len(stock_df) > 0:
 			latest_price = stock_df.iloc[-1]['Adj Close']
 			target_price = rating_df[rating_df.Price>0].Price
 			if len(target_price)==0:
-				min_ret, med_ret, max_ret = 0, 0, 0
+				med_roi = 0
+				# min_roi, med_roi, max_roi = 0, 0, 0
 			else:
-				min_ret = target_price.min()/latest_price-1
-				med_ret = target_price.median()/latest_price-1
-				max_ret = target_price.max()/latest_price-1
+				med_roi = target_price.median()/latest_price-1
+				# min_roi = target_price.min()/latest_price-1
+				# max_roi = target_price.max()/latest_price-1
 
 			# return_at_forecast = []
 			gaps = []
@@ -84,10 +91,15 @@ def main_table(tickers, start_date):
 				gap = (latest_price - p_star)/latest_price
 				gaps.append(gap)
 
+			if len(rating_df[rating_df.Rating >= 0]) > 0:
+				score = rating_df[rating_df.Rating >= 0].Rating.mean()
+			else:
+				score = -1
 			data.append({
 				'Stock' : t,
-				'Score' : rating_df[rating_df.Rating >= 0].Rating.mean(),
-				'Count' : len(rating_df[rating_df.Price>0]),
+				'Score' : score,
+				'N' : len(rating_df.Price),
+				'ROI' : med_roi,
 				'Quarter' : trends['Growth_Quarter']/100,
 				'NextQuarter' : trends['Growth_NextQuarter']/100,
 				'Year' : trends['Growth_Year']/100,
@@ -121,8 +133,8 @@ def secondary_table(ticker, start_date):
 			'id':'Rating',
 		},
 		{
-			'id':'Forecast',
-			'name':'Forecast',
+			'id':'ROI',
+			'name':'ROI',
 			'type':'numeric',
 			'format': FormatTemplate.percentage(1).sign(Sign.positive),
 		},
@@ -143,13 +155,13 @@ def secondary_table(ticker, start_date):
 		close_price = stock['Adj Close'].loc[date_nearest]
 
 		item = df.iloc[i]
-		score = round(get_analyst_score(item.Analyst),2)
+		trust = round(get_analyst_score(item.Analyst),2)
 		data.append({
 			'Date':datetime.datetime.strftime(item.name,'%m.%d'),
 			'Forecaster':item.Analyst,
-			'Trust':score,
+			'Trust':trust,
 			'Rating': rating_label[item.Rating],
-			'Forecast': 0 if item.Price == 0 else item.Price/close_price-1,
+			'ROI': 0 if item.Price == 0 else item.Price/close_price-1,
 		})
 	return data, columns
 

@@ -28,6 +28,7 @@ INDEX_FILE = './Info/index.txt'
 STOCKS = {}
 RATINGS = {}
 FINANCIALS = {}
+QUOTES = {}
 ANALYSTS = None
 
 BadAnalysts = ['cfra']
@@ -45,7 +46,7 @@ Holidays = holidays.UnitedStates(years=datetime.date.today().year, state='DE')
 Holidays = { k:v for k,v in Holidays.items() if k != VeteransDay }
 
 #------------------------------------------------------------------------------
-def setup():
+def setup(update=False):
 	load_analyst_data()
 	tickers = set()
 	for portfolio in os.listdir(PORTFOLIOS_DIR):
@@ -53,8 +54,94 @@ def setup():
 			t = t.strip()
 			if t:
 				tickers.add(t)
-	for t in tickers:
-		load_data_for_ticker(t)
+	tickers = sorted(tickers)
+	if update:
+		for t in tickers:
+			load_data_for_ticker(t)
+	else:
+		global STOCKS, RATINGS, FINANCIALS, QUOTES
+		for t in tickers:
+			Debug('Reading information for {}'.format(t))
+			try:
+				Debug('\tprices')
+				stock_file = os.path.join(STOCKS_DIR, t+'.csv')
+				STOCKS[t] = pandas.read_csv(stock_file, index_col='Date', parse_dates=['Date'])
+			except:
+				raise Exception('Problem loading prices.')
+
+			try:
+				Debug('\tratings')
+				rating_file = os.path.join(RATINGS_DIR, t + '.csv')
+				RATINGS[t] = pandas.read_csv(rating_file, index_col='Date', parse_dates=['Date'])
+			except:
+				raise Exception('Problem loading ratings.')
+
+			try:
+				Debug('\tfinancials')
+				eps_history_file = os.path.join(INFO_DIR, 'eps_history.csv')
+				trends_file = os.path.join(INFO_DIR, 'trends.csv')
+				earnings_df = pandas.read_csv(eps_history_file, index_col=['Ticker','Date'], parse_dates=['Date'])
+				trends_df = pandas.read_csv(trends_file, index_col=['Ticker'], parse_dates=['Date'])
+				FINANCIALS[t] = dict(
+					eps = earnings_df.loc[(t,)][0:4],
+					trends = trends_df.loc[t]
+				)
+			except:
+				raise Exception('Problem loading financial info.')
+
+			try:
+				Debug('\tquotes')
+				quote_file = os.path.join(INFO_DIR, 'quote.csv')
+				QUOTES[t] = pandas.read_csv(quote_file, index_col=['Ticker']).loc[t]
+			except:
+				raise Exception('Problem loading quote.')
+
+#------------------------------------------------------------------------------
+def str_to_num(m):
+	value = 1
+	if m.endswith('T'):
+		value = 10**3 * float(m.replace('T',''))
+	elif m.endswith('B'):
+		value = float(m.replace('B',''))
+	elif m.endswith('M'):
+		value = 0.001 * float(m.replace('M',''))
+	else:
+		raise Exception('Unknown market cap {}'.format(m))
+	return value
+
+#------------------------------------------------------------------------------
+def get_company_data(ticker):
+	url='http://finance.yahoo.com/quote/{}?p={}'.format(ticker,ticker)
+	saved_to = os.path.join(INFO_DIR, 'quote.csv')
+	if not os.path.exists(saved_to):
+		print('Download company data for', ticker)
+		df = pandas.read_html(url)
+		df = df[1].rename(columns={1:ticker}).set_index(0).transpose()
+		df.index.name = 'Ticker'
+		df['Date'] = datetime.datetime.now()
+		df.to_csv(saved_to)
+		return df
+	else:
+		existing = pandas.read_csv(saved_to, index_col=['Ticker'])
+		flag = False
+		if ticker not in existing.index:
+			flag = True
+		else:
+			date = pandas.to_datetime(existing.loc[ticker].Date)
+			if date < datetime.datetime.today() - datetime.timedelta(days=7):
+				flag = True
+		if flag:
+			print('Download company data for', ticker)
+			df = pandas.read_html(url)
+			df = df[1].rename(columns={1:ticker}).set_index(0).transpose()
+			df.index.name = 'Ticker'
+			df['Date'] = datetime.datetime.now()
+			existing.loc[ticker, :] = df.iloc[0]
+			existing.sort_index(inplace=True)
+			existing.to_csv(saved_to)
+		else:
+			print('Data for {} already exists.'.format(ticker))
+		return existing.loc[ticker]
 
 #------------------------------------------------------------------------------
 def load_data_for_portfolio(portfolio):
@@ -74,12 +161,13 @@ def load_data_for_portfolio(portfolio):
 
 #------------------------------------------------------------------------------
 def load_data_for_ticker(ticker):
-	global STOCKS, RATINGS
+	global STOCKS, RATINGS, FINANCIALS, QUOTES
 	df = get_stock_prices(ticker)
 	if df is not None:
 		STOCKS[ticker] = df
 		RATINGS[ticker] = get_stock_ratings(ticker)
 		FINANCIALS[ticker] = get_financial_info(ticker)
+		QUOTES[ticker] = get_company_data(ticker)
 		return True
 	else:
 		print('Unable to load data for ticker', ticker)
@@ -99,27 +187,33 @@ def need_refresh(file_name):
 		d = datetime.date.today()
 		while d.weekday() in [5,6] or d in Holidays:
 			d -= datetime.timedelta(days=1)
-		return datetime.datetime(d.year, d.month, d.day, 17)
+		time_diff = datetime.datetime.utcnow() - datetime.timedelta(hours=4) - datetime.datetime.now()
+		hour_diff = round(time_diff.total_seconds()/3600)
+		return datetime.datetime(d.year, d.month, d.day, 16+hour_diff)
 
 	if not os.path.exists(file_name):
 		return True
 	
 	mtime = datetime.datetime.fromtimestamp(os.path.getmtime(file_name))
+	# Debug('need_refresh', file_name, mtime, last_close())
+	if (datetime.datetime.now() - mtime).total_seconds() < 60*60:
+		return False
 	return mtime < last_close()
 
 #------------------------------------------------------------------------------
 def get_financial_info(ticker):
 	eps_history_file = os.path.join(INFO_DIR, 'eps_history.csv')
 	trends_file = os.path.join(INFO_DIR, 'trends.csv')
-	if need_refresh(eps_history_file):
-		if not os.path.exists(eps_history_file):
-			with open(eps_history_file, 'w') as f:
-				f.write('Ticker,Date,Est,Actual\n')
-		if not os.path.exists(trends_file):
-			with open(trends_file, 'w') as f:
-				f.write('Ticker,EPS_Quarter,EPS_NextQuarter,EPS_Year,EPS_NextYear,Growth_Quarter,Growth_NextQuarter,Growth_Year,Growth_NextYear,Date\n')
-		earnings_df = pandas.read_csv(eps_history_file, index_col=['Ticker','Date'], parse_dates=['Date'])
-		trends_df = pandas.read_csv(trends_file, index_col=['Ticker'], parse_dates=['Date'])
+	if not os.path.exists(eps_history_file):
+		with open(eps_history_file, 'w') as f:
+			f.write('Ticker,Date,Est,Actual\n')
+	if not os.path.exists(trends_file):
+		with open(trends_file, 'w') as f:
+			f.write('Ticker,EPS_Quarter,EPS_NextQuarter,EPS_Year,EPS_NextYear,Growth_Quarter,Growth_NextQuarter,Growth_Year,Growth_NextYear,Date\n')
+	earnings_df = pandas.read_csv(eps_history_file, index_col=['Ticker','Date'], parse_dates=['Date'])
+	trends_df = pandas.read_csv(trends_file, index_col=['Ticker'], parse_dates=['Date'])
+
+	if ticker not in earnings_df.index:
 		ignore = False
 		try:
 			Debug('Update financial info for', ticker)
@@ -256,29 +350,38 @@ def determine_start_date(start_date):
 	if len(STOCKS) < 1:
 		return None
 	dates = STOCKS[ list(STOCKS.keys())[0] ].index
-	if start_date == '1W':
-		return dates[-5]
-	if start_date == '1M':
-		return dates[-22]
-	if start_date == '2M':
-		return dates[-22*2]
-	if start_date == '3M':
-		return dates[-22*3]
-	if start_date == '6M':
-		return dates[-22*6]
-	if start_date == '9M':
-		return dates[-22*9]
-	if start_date == '1Y':
-		return dates[-253]
-	if start_date == '1.5Y':
-		return dates[-380]
-	if start_date == '2Y':
-		return dates[-253*2]
-	if start_date == '3Y':
-		return dates[-253*3]
-	if start_date == '3Y':
-		return dates[-253*4]
-	return None
+	return dates[-7*start_date]
+	# if start_date == '1W':
+	# 	return dates[-5]
+	# if start_date == '2W':
+	# 	return dates[-10]
+	# if start_date == '3W':
+	# 	return dates[-16]
+	# if start_date == '1M':
+	# 	return dates[-22]
+	# if start_date == '1.5M':
+	# 	return dates[-33]
+	# if start_date == '2M':
+	# 	return dates[-22*2]
+	# if start_date == '3M':
+	# 	return dates[-22*3]
+	# if start_date == '3M':
+	# 	return dates[-22*4]
+	# if start_date == '6M':
+	# 	return dates[-22*6]
+	# if start_date == '9M':
+	# 	return dates[-22*9]
+	# if start_date == '1Y':
+	# 	return dates[-253]
+	# if start_date == '1.5Y':
+	# 	return dates[-380]
+	# if start_date == '2Y':
+	# 	return dates[-253*2]
+	# if start_date == '3Y':
+	# 	return dates[-253*3]
+	# if start_date == '3Y':
+	# 	return dates[-253*4]
+	# return None
 
 #------------------------------------------------------------------------------
 def portfolio_list():

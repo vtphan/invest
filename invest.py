@@ -24,7 +24,8 @@ def build_main_table(ticker_options, start_date):
 @app.callback(
 	Output('main-table', 'selected_rows'),
 	[
-		Input('time-menu', 'value'),
+		Input('time-slider', 'value'),
+		# Input('time-menu', 'value'),
 		Input('tickers', 'options'),
 	],
 	[
@@ -51,9 +52,10 @@ def update_main_table_selected_rows(start_date, ticker_options, old_data, old_se
 	],
 	[
 		Input('main-table', 'selected_rows'),
-		Input('time-menu', 'value'),
 	],
 	[
+		State('time-slider', 'value'),
+		# State('time-menu', 'value'),
 		State('tickers', 'options'),
 	]
 )
@@ -73,7 +75,8 @@ def main_table_callback(selected_rows, start_date, ticker_options):
 	],
 	[
 		State('main-table', 'selected_rows'),
-		State('time-menu', 'value'),
+		State('time-slider', 'value'),
+		# State('time-menu', 'value'),
 		# State('analysis-menu', 'value'),
 	]
 )
@@ -88,35 +91,38 @@ def secondary_table_callback(data, selected_rows, start_date):
 	Output('figure1', 'figure'),
 	[
 		Input('main-table', 'data'),
+		Input('index-menu', 'value'),
 	],
 	[
 		State('main-table', 'selected_rows'),
-		State('time-menu', 'value'),
+		State('time-slider', 'value'),
+		# State('time-menu', 'value'),
 	]
 )
-def figure1_callback(data, selected_rows, start_date):
+def figure1_callback(data, index, selected_rows, start_date):
 	if not start_date or not selected_rows or not data:
 		return dict(data=[],layout={})
 	tickers = [data[i]['Stock'] for i in selected_rows]
-	return plot_figure1(tickers[0], start_date)
+	return plot_figure1(tickers[0], start_date, index)
+	# return dict(data=[])
 
 #------------------------------------------------------------------------------
 @app.callback(
 	Output('figure2', 'figure'),
 	[
 		Input('main-table', 'data'),
-		Input('index-menu', 'value'),
 	],
 	[
 		State('main-table', 'selected_rows'),
-		State('time-menu', 'value'),
+		State('time-slider', 'value'),
+		# State('time-menu', 'value'),
 	]
 )
-def figure2_callback(table_data, index, selected_rows, start_date):
+def figure2_callback(table_data, selected_rows, start_date):
 	if not start_date or not selected_rows or not table_data:
 		return dict(data=[],layout={})
 	tickers = [table_data[i]['Stock'] for i in selected_rows]
-	return plot_figure2(tickers[0], start_date, index)
+	return plot_figure2(tickers[0], start_date)
 
 #------------------------------------------------------------------------------
 @app.callback(
@@ -126,7 +132,8 @@ def figure2_callback(table_data, index, selected_rows, start_date):
 	],
 	[
 		State('main-table', 'selected_rows'),
-		State('time-menu', 'value')
+		State('time-slider', 'value')
+		# State('time-menu', 'value')
 	]
 )
 def figure3_callback(data, selected_rows, start_date):
@@ -178,7 +185,7 @@ def action_menu_callback(action, data, selected_rows, text_input, portfolio_name
 		res = load_data_for_ticker(ticker_name)
 		if res == False:
 			print('Unable to add {}'.format(ticker_name))
-			return portfolio_name
+			return portfolio_name, index_list()
 		tickers = None
 		with open(os.path.join(PORTFOLIOS_DIR, portfolio_name)) as fp:
 			tickers = set([ticker_name] + [ line.strip() for line in fp.readlines()])
@@ -241,14 +248,22 @@ def action_menu_callback(action, data, selected_rows, text_input, portfolio_name
 		return '', index_list()
 
 	elif action == 'Update portfolio' and portfolio_name != '':
-		load_data_for_portfolio(portfolio_name, update=True)
+		load_data_for_portfolio(portfolio_name)
 
 	return portfolio_name, index_list()
 
 #------------------------------------------------------------------------------
 
 if __name__ == '__main__':
-	setup()
+	import sys
+	if len(sys.argv) == 1:
+		setup(update=False)
+	elif sys.argv[1] == '-update':
+		setup(update=True)
+	else:
+		print('Incorrect number of arguments. Optional parameters:')
+		print('\t-update\t\tUpdate data for all stocks.')
+		sys.exit(1)
 	app.run_server(debug=DEBUG)
 
 #------------------------------------------------------------------------------
