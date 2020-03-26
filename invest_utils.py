@@ -47,6 +47,15 @@ Holidays = { k:v for k,v in Holidays.items() if k != VeteransDay }
 
 #------------------------------------------------------------------------------
 def setup(update=False):
+	if not os.path.exists(INFO_DIR):
+		os.mkdir(INFO_DIR)
+	if not os.path.exists(PORTFOLIOS_DIR):
+		os.mkdir(PORTFOLIOS_DIR)
+	if not os.path.exists(STOCKS_DIR):
+		os.mkdir(STOCKS_DIR)
+	if not os.path.exists(RATINGS_DIR):
+		os.mkdir(RATINGS_DIR)
+
 	load_analyst_data()
 	tickers = set()
 	for portfolio in os.listdir(PORTFOLIOS_DIR):
