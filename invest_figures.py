@@ -9,7 +9,8 @@ from invest_utils import *
 
 #------------------------------------------------------------------------------
 def plot_figure1(ticker, start_date, index):
-	start = determine_start_date(start_date)
+	# start = determine_start_date(start_date)
+	start = start_date
 	end = datetime.datetime.today()
 	ratings = RATINGS[ticker][start:end].sort_values(by=['Price','Date'], ascending=False)
 	if len(ratings)==0:
@@ -303,7 +304,8 @@ def plot_figure1(ticker, start_date, index):
 #------------------------------------------------------------------------------
 
 def plot_figure2(ticker, start_date):
-	start = determine_start_date(start_date)
+	# start = determine_start_date(start_date)
+	start = start_date
 	volumes = STOCKS[ticker]['Volume'][start:]
 
 	fig = make_subplots(
@@ -490,7 +492,8 @@ def plot_figure3(ticker, start_date):
 
 def OLD_plot_figure2(ticker, start_date, index):
 	plot_data = []
-	start = determine_start_date(start_date)
+	# start = determine_start_date(start_date)
+	start = start_date
 	end = datetime.datetime.today()
 	rating_label={0:'?',1:'Sell',2:'Hold',3:'Buy',4:'Outperform',5:'Strong Buy'}
 	stock = STOCKS[ticker]

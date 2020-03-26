@@ -24,7 +24,7 @@ def build_main_table(ticker_options, start_date):
 @app.callback(
 	Output('main-table', 'selected_rows'),
 	[
-		Input('time-slider', 'value'),
+		Input('date-picker', 'date'),
 		# Input('time-menu', 'value'),
 		Input('tickers', 'options'),
 	],
@@ -54,7 +54,7 @@ def update_main_table_selected_rows(start_date, ticker_options, old_data, old_se
 		Input('main-table', 'selected_rows'),
 	],
 	[
-		State('time-slider', 'value'),
+		State('date-picker', 'date'),
 		# State('time-menu', 'value'),
 		State('tickers', 'options'),
 	]
@@ -75,7 +75,7 @@ def main_table_callback(selected_rows, start_date, ticker_options):
 	],
 	[
 		State('main-table', 'selected_rows'),
-		State('time-slider', 'value'),
+		State('date-picker', 'date'),
 		# State('time-menu', 'value'),
 		# State('analysis-menu', 'value'),
 	]
@@ -95,7 +95,7 @@ def secondary_table_callback(data, selected_rows, start_date):
 	],
 	[
 		State('main-table', 'selected_rows'),
-		State('time-slider', 'value'),
+		State('date-picker', 'date'),
 		# State('time-menu', 'value'),
 	]
 )
@@ -114,7 +114,7 @@ def figure1_callback(data, index, selected_rows, start_date):
 	],
 	[
 		State('main-table', 'selected_rows'),
-		State('time-slider', 'value'),
+		State('date-picker', 'date'),
 		# State('time-menu', 'value'),
 	]
 )
@@ -132,7 +132,7 @@ def figure2_callback(table_data, selected_rows, start_date):
 	],
 	[
 		State('main-table', 'selected_rows'),
-		State('time-slider', 'value')
+		State('date-picker', 'date'),
 		# State('time-menu', 'value')
 	]
 )

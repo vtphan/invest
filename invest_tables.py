@@ -61,7 +61,8 @@ def main_table(tickers, start_date):
 		if t not in STOCKS or t not in RATINGS:
 			print('{} is not found.'.format(t))
 			continue
-		start = determine_start_date(start_date)
+		# start = determine_start_date(start_date)
+		start = start_date
 		end = datetime.datetime.today()
 		stock_df = STOCKS[t][start:end]
 		rating_df = RATINGS[t][start:end]
@@ -139,7 +140,8 @@ def secondary_table(ticker, start_date):
 			'format': FormatTemplate.percentage(1).sign(Sign.positive),
 		},
 	]
-	start = determine_start_date(start_date)
+	# start = determine_start_date(start_date)
+	start = start_date
 	end = datetime.datetime.today()
 
 	stock = STOCKS[ticker]

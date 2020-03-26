@@ -3,6 +3,7 @@ import dash_html_components as html
 from invest_time_range import time_range_layout
 import dash_table
 from invest_utils import index_list
+import datetime
 
 #---------------------------------------------------------------------------------------
 def setup_table(table_id):
@@ -97,8 +98,9 @@ time_slider = html.Div(
 		id = 'time-slider',
 		min = 1,
 		max = 52,
-		step = None,
-		marks = { i : '{}w'.format(i) for i in range(1,53) },
+		# step = 1,
+		marks = { i:''.format(i) for i in [1,2,3,4,6,8,10,12,16,20,24] },
+		# marks = { i : '{}w'.format(i) for i in range(1,53) },
 		value = 1,
 	),
 	className = 'four columns',
@@ -130,6 +132,17 @@ time_menu =	html.Div(
 	className = 'four columns',
 )
 
+#----------------------------------------------------------------------
+date_picker = html.Div(
+    dcc.DatePickerSingle(
+        id='date-picker',
+        min_date_allowed=datetime.date.today() - datetime.timedelta(days=365*3),
+        max_date_allowed=datetime.date.today() - datetime.timedelta(days=1),
+        date=datetime.date.today() - datetime.timedelta(days=7),
+        # initial_visible_month=dt(2017, 8, 5),
+    ),
+	className = 'four columns',
+)
 #---------------------------------------------------------------------------------------
 
 app_layout = html.Div([	
@@ -138,7 +151,7 @@ app_layout = html.Div([
 		index_menu,
 		action_menu,
 		text_input,
-		time_slider,
+		date_picker,
 		# time_menu,
 	], style={'width':'95%', 'margin':'0 auto', 'height':'55px'}),
 
