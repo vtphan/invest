@@ -398,7 +398,7 @@ def portfolio_list():
 	if not os.path.exists(saved_file):
 		with open(saved_file,'w') as f:
 			f.write('')
-	return [dict(label=p, value=p) for p in sorted(os.listdir(PORTFOLIOS_DIR))]
+	return [dict(label=p, value=p) for p in sorted(os.listdir(PORTFOLIOS_DIR), reverse=True)]
 
 #------------------------------------------------------------------------------
 def index_list():

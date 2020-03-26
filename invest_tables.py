@@ -15,6 +15,12 @@ def main_table(tickers, start_date):
 			# 'presentation':'markdown',
 		},
 		{
+			'name': ['','ROI'],
+			'id':'ROI',
+			'type':'numeric',
+			'format': FormatTemplate.percentage(1).sign(Sign.positive),
+		},
+		{
 			'name': ['Forecast','Score'],
 			'id':'Score',
 			'type':'numeric',
@@ -26,8 +32,8 @@ def main_table(tickers, start_date):
 			'type':'numeric',
 		},
 		{
-			'name': ['Forecast', 'ROI'],
-			'id':'ROI',
+			'name': ['Forecast', 'NTM ROI'],
+			'id':'NTM ROI',
 			'type':'numeric',
 			'format': FormatTemplate.percentage(1).sign(Sign.positive),
 		},
@@ -98,9 +104,10 @@ def main_table(tickers, start_date):
 				score = -1
 			data.append({
 				'Stock' : t,
+				'ROI' : stock_df.iloc[-1]['Adj Close']/stock_df.iloc[0]['Adj Close'] - 1,
 				'Score' : score,
 				'N' : len(rating_df.Price),
-				'ROI' : med_roi,
+				'NTM ROI' : med_roi,
 				'Quarter' : trends['Growth_Quarter']/100,
 				'NextQuarter' : trends['Growth_NextQuarter']/100,
 				'Year' : trends['Growth_Year']/100,

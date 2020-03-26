@@ -194,7 +194,7 @@ def action_menu_callback(action, data, selected_rows, text_input, portfolio_name
 				fp.write(t + '\n')
 		print('{} is added to {}'.format(ticker_name, portfolio_name))
 
-	elif action == 'Save symbols' and len(selected_rows)>0:
+	elif action == 'Save symbol' and len(selected_rows)>0:
 		with open(os.path.join(PORTFOLIOS_DIR, '__SAVED__')) as fp:
 			to_be_saved = [data[i]['Stock'] for i in selected_rows]
 			tickers = set([line.strip() for line in fp.readlines()])
@@ -205,7 +205,7 @@ def action_menu_callback(action, data, selected_rows, text_input, portfolio_name
 				fp.write(t + '\n')
 		print('{} saved to __SAVED__'.format(to_be_saved))
 
-	elif action == 'Remove symbols' and len(selected_rows)>0:
+	elif action == 'Remove symbol' and len(selected_rows)>0:
 		with open(os.path.join(PORTFOLIOS_DIR, portfolio_name)) as fp:
 			to_be_removed = [data[i]['Stock'] for i in selected_rows]
 			tickers = set([line.strip() for line in fp.readlines()])

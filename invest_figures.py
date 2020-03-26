@@ -124,7 +124,7 @@ def plot_figure1(ticker, start_date, index):
 	#-----------------------------------------------------------------------
 	# series = prices
 	if len(tmp)>0:
-		name = 'TMF {}%'.format(round(100*(np.median(tmp)/prices[-1]-1),1))
+		name = 'NTM {}%'.format(round(100*(np.median(tmp)/prices[-1]-1),1))
 	else:
 		name = ticker 
 	# plot_data.append(dict(
