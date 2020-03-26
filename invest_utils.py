@@ -61,23 +61,23 @@ def setup(update=False):
 	else:
 		global STOCKS, RATINGS, FINANCIALS, QUOTES
 		for t in tickers:
-			Debug('Reading information for {}'.format(t))
+			print('Reading information for {}: '.format(t), end='')
 			try:
-				Debug('\tprices')
+				print('prices, ', end='')
 				stock_file = os.path.join(STOCKS_DIR, t+'.csv')
 				STOCKS[t] = pandas.read_csv(stock_file, index_col='Date', parse_dates=['Date'])
 			except:
 				raise Exception('Problem loading prices.')
 
 			try:
-				Debug('\tratings')
+				print('ratings, ', end='')
 				rating_file = os.path.join(RATINGS_DIR, t + '.csv')
 				RATINGS[t] = pandas.read_csv(rating_file, index_col='Date', parse_dates=['Date'])
 			except:
 				raise Exception('Problem loading ratings.')
 
 			try:
-				Debug('\tfinancials')
+				print('financials, ', end='')
 				eps_history_file = os.path.join(INFO_DIR, 'eps_history.csv')
 				trends_file = os.path.join(INFO_DIR, 'trends.csv')
 				earnings_df = pandas.read_csv(eps_history_file, index_col=['Ticker','Date'], parse_dates=['Date'])
@@ -90,7 +90,7 @@ def setup(update=False):
 				raise Exception('Problem loading financial info.')
 
 			try:
-				Debug('\tquotes')
+				print('quotes')
 				quote_file = os.path.join(INFO_DIR, 'quote.csv')
 				QUOTES[t] = pandas.read_csv(quote_file, index_col=['Ticker']).loc[t]
 			except:
