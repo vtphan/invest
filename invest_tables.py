@@ -26,11 +26,11 @@ def main_table(tickers, start_date):
 			'type':'numeric',
 			'format': Format(precision=2,scheme=Scheme.fixed),
 		},
-		{
-			'name': ['Forecast','N'],
-			'id':'N',
-			'type':'numeric',
-		},
+		# {
+		# 	'name': ['Forecast','N'],
+		# 	'id':'N',
+		# 	'type':'numeric',
+		# },
 		{
 			'name': ['Forecast', 'NTM ROI'],
 			'id':'NTM ROI',
@@ -106,7 +106,7 @@ def main_table(tickers, start_date):
 				'Stock' : t,
 				'ROI' : stock_df.iloc[-1]['Adj Close']/stock_df.iloc[0]['Adj Close'] - 1,
 				'Score' : score,
-				'N' : len(rating_df.Price),
+				# 'N' : len(rating_df.Price),
 				'NTM ROI' : med_roi,
 				'Quarter' : trends['Growth_Quarter']/100,
 				'NextQuarter' : trends['Growth_NextQuarter']/100,
