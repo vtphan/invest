@@ -10,7 +10,7 @@ def buy_the_dip(expected_market_loss, threshold_to_buy, buy_amount, price_per_sh
 	print('Buy ${} at first {} drop. Add ${} at each {} drop. Each share costs ${}.'.format(
 			buy_amount, threshold_to_buy, buy_amount, threshold_to_buy, price_per_share))
 	print('i\tCash  \tLoss\tDrop\tPPS\tShares \tMarket value')
-	while price_per_share >= (1-expected_market_loss) * original_price:
+	while drop <= expected_market_loss:
 		price_per_share *= (1-threshold_to_buy)
 		shares = buy_amount / price_per_share
 		total_shares += shares
@@ -47,7 +47,7 @@ if __name__ == '__main__':
 	expected_market_loss = float(sys.argv[1])
 	buy_amount = float(sys.argv[2])
 	price_per_share = 1000
-	for r in [0.03, 0.04, 0.05, 0.06, 0.07]:
+	for r in [0.03, 0.04, 0.05, 0.06, 0.07, 0.08]:
 		capital_spent, shares, pps, mv, t = buy_the_dip(
 			expected_market_loss = expected_market_loss, 
 			threshold_to_buy = r, 
