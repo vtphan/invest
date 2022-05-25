@@ -1,4 +1,4 @@
-This software implements simple investment strategies.
+This web app uses Plotly Dash and provides scenarios analysis for different simple investment strategies.
 
 How to run:
 
