@@ -1,3 +1,5 @@
+This software implements simple investment strategies.
+
 How to run:
 
 * python invest.py
